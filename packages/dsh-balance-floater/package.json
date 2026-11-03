@@ -39,6 +39,14 @@
       "platform": "web",
       "inject": [],
       "external": []
+    },
+    "marketplace": {
+      "profiles": [
+        "web"
+      ],
+      "manualSteps": false,
+      "requiresRestart": true,
+      "requiresBuildApproval": false
     }
   }
 }

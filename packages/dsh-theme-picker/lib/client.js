@@ -10,7 +10,7 @@
  * the host boot script before the first paint.
  */
 window.__ModuleLoader__.load({
-	id: "dsh-theme-manager",
+	id: "dsh-theme-picker",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -18,7 +18,7 @@ window.__ModuleLoader__.load({
 		const React = require("react");
 
 		//#region constants
-		const NS = "theme-manager";
+		const NS = "theme-picker";
 		const STORAGE_KEY = "dsh-theme:active";
 		const ATTRIBUTE = "data-dsh-theme";
 		const SLOT = "settings.general.item";
@@ -214,9 +214,9 @@ window.__ModuleLoader__.load({
 
 			ctx.effect(() => {
 				if (typeof document === "undefined") return () => {};
-				if (document.querySelector("style[data-plugin=\"dsh-theme-manager\"]")) return () => {};
+				if (document.querySelector("style[data-plugin=\"dsh-theme-picker\"]")) return () => {};
 				const tag = document.createElement("style");
-				tag.dataset.plugin = "dsh-theme-manager";
+				tag.dataset.plugin = "dsh-theme-picker";
 				tag.textContent = ROW_CSS;
 				document.head.appendChild(tag);
 				return () => tag.remove();

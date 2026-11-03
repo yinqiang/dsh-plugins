@@ -1,5 +1,5 @@
 {
-  "name": "dsh-theme-manager",
+  "name": "dsh-theme-picker",
   "version": "0.1.0",
   "description": "Install many theme packs, switch between them instantly, no reload",
   "type": "module",
@@ -22,11 +22,11 @@
   ],
   "author": "yinqiang (https://github.com/yinqiang)",
   "license": "MIT",
-  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-manager#readme",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-picker#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yinqiang/dsh-plugins.git",
-    "directory": "packages/dsh-theme-manager"
+    "directory": "packages/dsh-theme-picker"
   },
   "bugs": {
     "url": "https://github.com/yinqiang/dsh-plugins/issues"
@@ -39,6 +39,14 @@
       "platform": "web",
       "inject": [],
       "external": []
+    },
+    "marketplace": {
+      "profiles": [
+        "web"
+      ],
+      "manualSteps": false,
+      "requiresRestart": true,
+      "requiresBuildApproval": false
     }
   }
 }

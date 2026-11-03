@@ -1,17 +1,17 @@
-# dsh-theme-dracula
+# dsh-theme-dracula-pack
 
-[dsh-theme-manager](../dsh-theme-manager) 的 Dracula 配色包。
+[dsh-theme-picker](../dsh-theme-picker) 的 Dracula 配色包。
 
-> 配色、token 覆盖与首帧注入方案来自 [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula)（MIT）。
+> 配色、token 覆盖与首帧注入方案来自 [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack)（MIT）。
 > 这里只做了一件事：把作用域从 `body[data-dsh-dracula]` 换成 `body[data-dsh-theme="dracula"]`，让管理器统一调度。颜色一个没改。
 
 ## 安装
 
 ```sh
-dsh plugin add dsh-theme-dracula
+dsh plugin add dsh-theme-dracula-pack
 ```
 
-需要同时安装 `dsh-theme-manager`，否则它只是躺在 node_modules 里的数据，没有入口。
+需要同时安装 `dsh-theme-picker`，否则它只是躺在 node_modules 里的数据，没有入口。
 
 ## 覆盖范围
 

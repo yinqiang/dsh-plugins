@@ -1,0 +1,4 @@
+# dsh-theme-picker bundle layer.
+- insert:
+    - id: theme-manager
+      name: dsh-theme-picker

@@ -7,15 +7,19 @@
 | 包 | 作用 | 类别 |
 | --- | --- | --- |
 | [`dsh-balance-floater`](./packages/dsh-balance-floater) | 侧边栏余额条，余额一掉就飘出街机风格的伤害数字 | UI |
-| [`dsh-theme-manager`](./packages/dsh-theme-manager) | 装多个主题包、随时切换、首帧不闪 | 主题 |
-| [`dsh-theme-dracula`](./packages/dsh-theme-dracula) | 给主题管理器用的 Dracula 配色包 | 主题 |
+| [`dsh-theme-picker`](./packages/dsh-theme-picker) | 装多个主题包、随时切换、首帧不闪 | 主题 |
+| [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | 给主题管理器用的 Dracula 配色包 | 主题 |
+
+## 包名说明
+
+`dsh-theme-picker` 不叫 `dsh-theme-manager`，是因为那个名字在 npm 上已被别人的同类插件占用；`dsh-theme-dracula-pack` 加 `-pack` 后缀是为了和上游 [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula)（一个独立插件）区分开。
 
 ## 安装
 
 ```sh
 dsh plugin add dsh-balance-floater
-dsh plugin add dsh-theme-manager
-dsh plugin add dsh-theme-dracula
+dsh plugin add dsh-theme-picker
+dsh plugin add dsh-theme-dracula-pack
 ```
 
 装完重启一次 DSH（Loader 行只在启动时读取）。
@@ -23,7 +27,7 @@ dsh plugin add dsh-theme-dracula
 也可以从市场装：**设置 → 插件 → Discover → Index sources** 里添加索引源，然后搜索包名。或者直接用发布产物：
 
 ```sh
-dsh plugin add https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-theme-manager.tgz
+dsh plugin add https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-theme-picker.tgz
 ```
 
 ### 本地开发
@@ -46,15 +50,15 @@ DSH 的插件清单只认 `package.json` 里的 **`dsh.bundle`** 声明。只写
 所以每个包都带一份 `dsh.bundle.patch.yml`，里面是它要插入的 Loader 行：
 
 ```yaml
-# packages/dsh-theme-manager/dsh.bundle.patch.yml
+# packages/dsh-theme-picker/dsh.bundle.patch.yml
 - insert:
     - id: theme-manager
-      name: dsh-theme-manager
+      name: dsh-theme-picker
 ```
 
 包名出现在 `dsh.profile.bundles` 里 → 启动时这份 patch 被应用 → 行插进 Loader。整个过程不需要用户手改任何 YAML。
 
-`dsh-theme-dracula` 是个纯数据包，patch 是空数组 `[]`——它不改 Loader，只是让 `dsh plugin add` 能把它装进 `node_modules` 让管理器读到。
+`dsh-theme-dracula-pack` 是个纯数据包，patch 是空数组 `[]`——它不改 Loader，只是让 `dsh plugin add` 能把它装进 `node_modules` 让管理器读到。
 
 ## 目录
 
@@ -65,8 +69,8 @@ packages/
     dsh.bundle.patch.yml  插入 Loader 行
     lib/index.js          宿主半（空 apply，给 Loader 一个入口）
     lib/client.js         手写 client bundle，无构建步骤
-  dsh-theme-manager/
-  dsh-theme-dracula/
+  dsh-theme-picker/
+  dsh-theme-dracula-pack/
     theme/theme.css       作用域写死的调色板
 scripts/
   install.mjs             本地软链安装
@@ -96,9 +100,9 @@ git push origin v0.1.0
 
 | 字段 | monorepo 子包怎么写 |
 | --- | --- |
-| `url` | `https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-manager` |
-| `name` | `yinqiang/dsh-plugins#dsh-theme-manager` |
-| 文件名 | `yinqiang__dsh-plugins--packages-dsh-theme-manager.yml` |
+| `url` | `https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-picker` |
+| `name` | `yinqiang/dsh-plugins#dsh-theme-picker` |
+| 文件名 | `yinqiang__dsh-plugins--packages-dsh-theme-picker.yml` |
 
 三道门槛：
 
@@ -110,4 +114,4 @@ git push origin v0.1.0
 
 ## 许可
 
-MIT。`dsh-theme-dracula` 的调色板沿用 [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula) 的 MIT 许可与署名。
+MIT。`dsh-theme-dracula-pack` 的调色板沿用 [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack) 的 MIT 许可与署名。

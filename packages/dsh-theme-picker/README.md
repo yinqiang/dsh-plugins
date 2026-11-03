@@ -1,12 +1,14 @@
-# dsh-theme-manager
+# dsh-theme-picker
+
+> 为什么叫 picker 而不是 manager：`dsh-theme-manager` 这个名字在 npm 上已被 [runcat-tommy](https://github.com/runcat-tommy/dsh-theme-manager) 的同类插件占用（58 个内置主题）。这里换一个不冲突的名字，装的时候别装错。
 
 一个开关管所有主题：装多个主题包也不会互相打架，随时切换、立即生效、首帧不闪。
 
 ## 安装
 
 ```sh
-dsh plugin add dsh-theme-manager
-dsh plugin add dsh-theme-dracula   # 再装至少一个主题包
+dsh plugin add dsh-theme-picker
+dsh plugin add dsh-theme-dracula-pack   # 再装至少一个主题包
 ```
 
 重启一次，然后 **设置 → 通用 → 主题**。
@@ -48,9 +50,9 @@ CSS 自己负责 scope，选择器写成 `:root:root body[data-dsh-theme="solari
 
 | id | 名称 | 来源 |
 | --- | --- | --- |
-| `dracula` | Dracula | `dsh-theme-dracula`，配色移植自 PuerJJJ/dsh-theme-dracula（MIT） |
+| `dracula` | Dracula | `dsh-theme-dracula-pack`，配色移植自 PuerJJJ/dsh-theme-dracula-pack（MIT） |
 
 ## 注意
 
-- 不要同时安装上游 `dsh-theme-dracula` 插件本体：它自带 `data-dsh-dracula` 属性和独立开关，会和这里的 `data-dsh-theme` 叠色。
+- 不要同时安装上游 `dsh-theme-dracula-pack` 插件本体：它自带 `data-dsh-dracula` 属性和独立开关，会和这里的 `data-dsh-theme` 叠色。
 - 选择存在 localStorage 的 `dsh-theme:active`；清掉它就回到 DSH 原生配色。

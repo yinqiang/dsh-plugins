@@ -1,7 +1,7 @@
 {
-  "name": "dsh-theme-dracula",
+  "name": "dsh-theme-dracula-pack",
   "version": "0.1.0",
-  "description": "Dracula palette pack for dsh-theme-manager",
+  "description": "Dracula palette pack for dsh-theme-picker",
   "type": "module",
   "main": "package.json",
   "files": [
@@ -18,11 +18,11 @@
   ],
   "author": "yinqiang (https://github.com/yinqiang)",
   "license": "MIT",
-  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-dracula#readme",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-dracula-pack#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/yinqiang/dsh-plugins.git",
-    "directory": "packages/dsh-theme-dracula"
+    "directory": "packages/dsh-theme-dracula-pack"
   },
   "bugs": {
     "url": "https://github.com/yinqiang/dsh-plugins/issues"
@@ -47,6 +47,14 @@
         "#f1fa8c",
         "#ff5555"
       ]
+    },
+    "marketplace": {
+      "profiles": [
+        "web"
+      ],
+      "manualSteps": false,
+      "requiresRestart": false,
+      "requiresBuildApproval": false
     }
   }
 }
