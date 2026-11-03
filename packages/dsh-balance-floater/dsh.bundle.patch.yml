@@ -1,0 +1,5 @@
+# dsh-balance-floater bundle layer.
+# Inserted once the package name appears in dsh.profile.bundles.
+- insert:
+    - id: balance-floater
+      name: dsh-balance-floater

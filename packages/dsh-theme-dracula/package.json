@@ -1,0 +1,52 @@
+{
+  "name": "dsh-theme-dracula",
+  "version": "0.1.0",
+  "description": "Dracula palette pack for dsh-theme-manager",
+  "type": "module",
+  "main": "package.json",
+  "files": [
+    "theme",
+    "dsh.bundle.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "theme",
+    "dracula"
+  ],
+  "author": "yinqiang (https://github.com/yinqiang)",
+  "license": "MIT",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-dracula#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yinqiang/dsh-plugins.git",
+    "directory": "packages/dsh-theme-dracula"
+  },
+  "bugs": {
+    "url": "https://github.com/yinqiang/dsh-plugins/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh.bundle.patch.yml"
+    },
+    "theme": {
+      "id": "dracula",
+      "name": "Dracula",
+      "description": "深紫底 + 霓虹强调色，覆盖 115 个设计 token 与代码高亮。",
+      "colorScheme": "dark",
+      "css": "./theme/theme.css",
+      "swatches": [
+        "#20212b",
+        "#282a36",
+        "#bd93f9",
+        "#ff79c6",
+        "#8be9fd",
+        "#50fa7b",
+        "#f1fa8c",
+        "#ff5555"
+      ]
+    }
+  }
+}

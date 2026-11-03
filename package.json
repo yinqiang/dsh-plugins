@@ -1,0 +1,14 @@
+{
+  "name": "dsh-plugins",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A collection of DeepSeek Harness plugins",
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "install:local": "node scripts/install.mjs --apply",
+    "install:local:dry": "node scripts/install.mjs",
+    "pack:all": "node scripts/pack.mjs"
+  },
+  "license": "MIT"
+}

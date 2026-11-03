@@ -1,0 +1,4 @@
+# dsh-theme-dracula is a data package: the manager reads theme/theme.css.
+# It ships a bundle patch so `dsh plugin add` can install it like any other plugin,
+# but contributes no Loader rows of its own.
+[]

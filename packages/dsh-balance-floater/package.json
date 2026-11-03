@@ -1,0 +1,44 @@
+{
+  "name": "dsh-balance-floater",
+  "version": "0.1.0",
+  "description": "Sidebar account balance with arcade damage numbers whenever it drops",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "dsh.bundle.patch.yml",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "balance",
+    "ui"
+  ],
+  "author": "yinqiang (https://github.com/yinqiang)",
+  "license": "MIT",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-balance-floater#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yinqiang/dsh-plugins.git",
+    "directory": "packages/dsh-balance-floater"
+  },
+  "bugs": {
+    "url": "https://github.com/yinqiang/dsh-plugins/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh.bundle.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [],
+      "external": []
+    }
+  }
+}

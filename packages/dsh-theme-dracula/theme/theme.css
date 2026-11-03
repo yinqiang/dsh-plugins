@@ -1,0 +1,187 @@
+/*
+ * Dracula for DeepSeek Harness — palette for dsh-client-ui-theme-manager.
+ *
+ * Palette and token coverage come from PuerJJJ's dsh-theme-dracula (MIT):
+ * https://github.com/PuerJJJ/dsh-theme-dracula
+ * Only the scoping selector changed (body[data-dsh-dracula] →
+ * body[data-dsh-theme="dracula"]); the colors are untouched.
+ *
+ * The doubled :root lifts specificity to (0,3,1) so the override outranks the
+ * bundled palette no matter which stylesheet lands first.
+ */
+
+/* ---------------------------------------------------------------- surfaces */
+
+:root:root body[data-dsh-theme="dracula"] {
+  color-scheme: dark;
+
+  --dsh-boot-bg: #20212b;
+  background-color: #20212b;
+
+  --dsw-alias-bg-base: #20212b;
+  --dsw-alias-bg-document-preview: #282a36;
+  --dsw-alias-bg-document-selection: color-mix(in srgb, #bd93f9 40%, transparent);
+  --dsw-alias-bg-layer-1: #282a36;
+  --dsw-alias-bg-layer-2: #2e3040;
+  --dsw-alias-bg-layer-3: #44475a;
+  --dsw-alias-bg-mask-1: #20212bcc;
+  --dsw-alias-bg-mask-2: #0000004d;
+  --dsw-alias-bg-mask-3: #20212be6;
+  --dsw-alias-bg-mask-drop: #191a21b3;
+  --dsw-alias-bg-mask-photo: #20212be0;
+  --dsw-alias-bg-module-platform: #2e3040;
+  --dsw-alias-bg-multi-select: #2e3040;
+  --dsw-alias-bg-overlay: #44475a;
+  --dsw-alias-bg-skeleton: #f8f8f212;
+
+  /* --------------------------------------------------------------- borders */
+
+  --dsw-alias-border-inverted: #f8f8f20f;
+  --dsw-alias-border-inverted2: #f8f8f214;
+  --dsw-alias-border-l1: #6272a41f;
+  --dsw-alias-border-l2: #6272a433;
+  --dsw-alias-border-l2-darkmode-thin: #6272a41f;
+  --dsw-alias-border-l3: #6272a44d;
+  --dsw-alias-border-l4: #6272a466;
+
+  /* ----------------------------------------------------------------- brand */
+
+  --dsw-alias-brand-primary: #bd93f9;
+  --dsw-alias-brand-primary-invert: #f8f8f2;
+  --dsw-alias-brand-primary-new-colorprimary-new-color: #bd93f9;
+  --dsw-alias-brand-text: #8be9fd;
+
+  /* ------------------------------------------------------------------ text */
+
+  --dsw-alias-label-primary: #f8f8f2;
+  --dsw-alias-label-primary-bluish: #f8f8f2;
+  --dsw-alias-label-primary-dimmed: #e8eaf4;
+  --dsw-alias-label-primary-foreground: #20212b;
+  --dsw-alias-label-primary-inverted: #20212b;
+  --dsw-alias-label-secondary: #bbc4de;
+  --dsw-alias-label-tertiary: #9ba9d0;
+  --dsw-alias-label-caption: #6272a4;
+  --dsw-alias-label-dimmed: #44475a;
+  --dsw-alias-label-document-preview: #bbc4de;
+  --dsw-alias-label-deep-diving: #bd93f9;
+  --dsw-alias-label-deep-diving-shimmer: color-mix(in srgb, #8be9fd 45%, transparent);
+  --dsw-alias-label-shimmer: color-mix(in srgb, #f8f8f2 45%, transparent);
+  --dsw-alias-link: #8be9fd;
+
+  /* --------------------------------------------------------------- buttons */
+
+  --dsw-alias-button-primary-fill: #bd93f9;
+  --dsw-alias-button-primary-hover: #a97dfa;
+  --dsw-alias-button-primary-dimmed: #5a3e99;
+  --dsw-alias-button-contrast-fill: #f8f8f2;
+  --dsw-alias-button-elevated-fill: #44475a;
+  --dsw-alias-button-floating-fill: #2e3040;
+  --dsw-alias-button-floating-hover: #44475a;
+  --dsw-alias-button-ghost-active-border: #6272a4;
+  --dsw-alias-button-ghost-active-fill: #44475a;
+  --dsw-alias-button-ghost-active-hover: #52566b;
+  --dsw-alias-button-info-fill: #8be9fd;
+  --dsw-alias-button-info-hover: #a9f0ff;
+  --dsw-alias-button-tool-bar-fill: #44475a80;
+  --dsw-alias-button-tool-bar-fill-invisible: #20212b5c;
+  --dsw-alias-button-tool-bar-hover: #52566b99;
+
+  /* ----------------------------------------------------------- interaction */
+
+  --dsw-alias-interactive-bg-active: #f8f8f224;
+  --dsw-alias-interactive-bg-hover: #f8f8f214;
+  --dsw-alias-interactive-bg-hover-accent: #bd93f93d;
+  --dsw-alias-interactive-bg-hover-danger: #ff55552b;
+  --dsw-alias-interactive-bg-hover-solid: #44475a;
+
+  /* ---------------------------------------------------------------- states */
+
+  --dsw-alias-state-business-primary: #8be9fd;
+  --dsw-alias-state-business-tertiary: #22343c;
+  --dsw-alias-state-error-primary: #ff5555;
+  --dsw-alias-state-error-secondary: #ff6e6e;
+  --dsw-alias-state-idle-primary: #6272a4;
+  --dsw-alias-state-success-primary: #50fa7b;
+  --dsw-alias-state-success-secondary: #6bfb90;
+  --dsw-alias-state-success-tertiary: #1d3a2a;
+  --dsw-alias-state-warn-label: #ffb86c;
+  --dsw-alias-state-warn-primary: #ffb86c;
+  --dsw-alias-state-warn-secondary: #ffc98a;
+  --dsw-alias-state-warn-tertiary: #3a2f22;
+  --dsw-alias-code-diff-added: #50fa7b1f;
+  --dsw-alias-code-diff-deleted: #ff55551f;
+  --dsw-alias-file-diff-added-bg: #24352b;
+  --dsw-alias-file-diff-added-gutter: #1d2d23;
+  --dsw-alias-file-diff-added-marker: #50fa7b;
+  --dsw-alias-file-diff-deleted-bg: #3a2430;
+  --dsw-alias-file-diff-deleted-gutter: #2e1b26;
+  --dsw-alias-file-diff-deleted-marker: #ff5555;
+
+  /* -------------------------------------------------------------- markdown */
+
+  --dsw-alias-markdown-citation: #44475a;
+  --dsw-alias-markdown-code-block: #282a36;
+  --dsw-alias-markdown-code-block-banner: #20212b;
+  --dsw-alias-markdown-code-segment-selected: #44475a;
+  --dsw-alias-markdown-code-segment-unselected: #2e3040;
+  --dsw-alias-markdown-inline-code: #44475a;
+  --dsw-alias-markdown-placeholder: #2e3040;
+  --dsw-alias-markdown-tag: #44475a;
+
+  /* --------------------------------------------------- chrome and overlays */
+
+  --dsw-alias-menu-group-header-fill: #20212bf0;
+  --dsw-alias-menu-icon: #f8f8f2;
+  --dsw-alias-scrollbar-bg-l1: #6272a466;
+  --dsw-alias-scrollbar-bg-l2: #6272a480;
+  --dsw-alias-scrollbar-hover-l1: #bd93f999;
+  --dsw-alias-scrollbar-hover-l2: #bd93f9cc;
+  --dsw-alias-switch-thumb: #f8f8f2;
+  --dsw-alias-toast-bg: #44475a;
+  --dsw-alias-toast-label: #f8f8f2;
+  --dsw-alias-tooltip-bg: #44475a;
+  --dsw-alias-tooltip-key-bg: color-mix(in srgb, #44475a, white 18%);
+  --dsw-alias-turn-trigger-bg: #f8f8f214;
+  --dsw-alias-turn-trigger-bg-hover: #f8f8f224;
+
+  /* ------------------------------------------- module surfaces (specific-*) */
+
+  --dsw-specific-bubble: #2e3040;
+  --dsw-specific-bubble-highlight: #44475a;
+  --dsw-specific-input-major: #2e3040;
+  --dsw-specific-login-input: #282a36;
+  --dsw-specific-selector: #2e3040;
+  --dsw-specific-sidebar-fill: #282a36;
+  --dsw-specific-sidebar-nav-item-active: #44475a;
+  --dsw-specific-sidebar-nav-item-active-accent: #4b3f6b;
+  --dsw-specific-sidebar-nav-item-hover: #2e3040;
+  --dsw-specific-tip: #2e3040;
+  --dsw-menu-surface-fill: #282a36f0;
+  --dsw-specific-menu: var(--dsw-menu-surface-fill);
+
+  /* ----------------------------------------------------- markdown gradients */
+
+  --dsw-linear-gradient-think: linear-gradient(180deg, #20212b 20.19%, #20212b00 100%);
+  --dsw-linear-think-select: linear-gradient(180deg, #2e3040 20.19%, #2e304000 100%);
+
+  /* ------------------------------ syntax highlighting (shiki css-variables) */
+
+  --shiki-foreground: var(--dsw-alias-label-primary);
+  --shiki-background: var(--dsw-alias-markdown-code-block);
+  --shiki-token-constant: #f1fa8c;
+  --shiki-token-string: #f1fa8c;
+  --shiki-token-string-expression: #8be9fd;
+  --shiki-token-comment: #6272a4;
+  --shiki-token-keyword: #ff79c6;
+  --shiki-token-parameter: #8be9fd;
+  --shiki-token-function: #50fa7b;
+  --shiki-token-punctuation: #f8f8f2;
+  --shiki-token-link: #8be9fd;
+}
+
+/* Text selection: the accent at 42% rather than the current-line grey, which is
+   also the inline-code surface — a grey selection on a grey chip is invisible. */
+:root:root body[data-dsh-theme="dracula"] ::selection {
+  background-color: color-mix(in srgb, #bd93f9 42%, transparent);
+  color: #f8f8f2;
+}
