@@ -1,0 +1,5 @@
+# dsh-solar-term bundle layer.
+# Inserted once the package name appears in dsh.profile.bundles.
+- insert:
+    - id: solar-term
+      name: dsh-solar-term

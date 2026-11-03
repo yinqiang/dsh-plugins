@@ -1,0 +1,62 @@
+{
+  "name": "dsh-solar-term",
+  "version": "0.1.0",
+  "description": "Current solar term and the days left until the next one, shown at the top-left of the conversation",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "icon.svg",
+    "dsh.bundle.patch.yml",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "solar-term",
+    "jieqi",
+    "calendar",
+    "ui"
+  ],
+  "author": "yinqiang (https://github.com/yinqiang)",
+  "license": "MIT",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-solar-term#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yinqiang/dsh-plugins.git",
+    "directory": "packages/dsh-solar-term"
+  },
+  "bugs": {
+    "url": "https://github.com/yinqiang/dsh-plugins/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh.bundle.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "external": []
+    },
+    "marketplace": {
+      "profiles": [
+        "web",
+        "desktop"
+      ],
+      "manualSteps": false,
+      "requiresRestart": false,
+      "requiresBuildApproval": false
+    }
+  }
+}

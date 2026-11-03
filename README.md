@@ -9,6 +9,7 @@
 | [`dsh-balance-floater`](./packages/dsh-balance-floater) | 余额贴在左下角头像按钮右侧，余额一掉就飘出街机风格的伤害数字 | UI |
 | [`dsh-theme-picker`](./packages/dsh-theme-picker) | 装多个主题包、随时切换、首帧不闪 | 主题 |
 | [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | 给主题管理器用的 Dracula 配色包 | 主题 |
+| [`dsh-solar-term`](./packages/dsh-solar-term) | 对话页左上角的节气牌：当前节气、交节日期、距下一个节气还有几天 | UI |
 
 ## 包名说明
 
