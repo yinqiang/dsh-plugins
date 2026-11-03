@@ -185,3 +185,18 @@
   background-color: color-mix(in srgb, #bd93f9 42%, transparent);
   color: #f8f8f2;
 }
+
+/* ------------------------------------------------------------- terminal */
+
+/* Sidebar terminal on the wallpaper. The xterm surface and its wrapper both
+   paint --dsw-alias-bg-base, which would otherwise hide the image. The wrapper
+   keeps a light wash so text stays readable over a bright photo. */
+:root:root body[data-dsh-theme="dracula"] .xterm,
+:root:root body[data-dsh-theme="dracula"] .xterm .xterm-viewport,
+:root:root body[data-dsh-theme="dracula"] .xterm .xterm-screen {
+  background: transparent !important;
+}
+
+:root:root body[data-dsh-theme="dracula"] [class*="_screen"]:has(.xterm) {
+  background: color-mix(in srgb, #20212b 45%, transparent) !important;
+}

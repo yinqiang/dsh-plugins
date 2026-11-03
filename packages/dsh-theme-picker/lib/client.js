@@ -128,13 +128,43 @@ window.__ModuleLoader__.load({
 			".dsh-tm-sliderlabel{font-size:12px;line-height:20px;color:var(--dsw-alias-label-secondary);white-space:nowrap}",
 			".dsh-tm-range{flex:1;min-width:120px;accent-color:var(--dsw-alias-brand-primary)}",
 			".dsh-tm-slidervalue{font-size:12px;line-height:20px;color:var(--dsw-alias-label-tertiary);min-width:36px;text-align:right;font-variant-numeric:tabular-nums}",
-			// terminal: let the wallpaper through the xterm surface
-			".xterm, .xterm .xterm-viewport, .xterm .xterm-screen{background:transparent !important}",
-			'[class*="_screen"]:has(.xterm){background:transparent !important}',
 		].join("\n");
 		//#endregion
 
 		//#region state
+		/** Font roles a pack may carry. */
+		const FONT_ROLES = ["text", "code", "terminal"];
+		/** Roles this plugin has overridden, so switching away can hand them back. */
+		let appliedFontRoles = {};
+		/** Theme service, captured in apply(). */
+		let themeService = null;
+
+		/**
+		 * Apply a pack's declared fonts through the theme service (the terminal
+		 * reads fontFamilies from the service store, so a CSS variable cannot
+		 * reach it). Roles the previous pack overrode but this one does not are
+		 * handed back to the built-in stack.
+		 */
+		function applyPackFonts(activeId) {
+			const service = themeService;
+			if (service === null || typeof service.setFontFamily !== "function") return;
+			const pack = activeId === null ? null : catalog.themes.filter((theme) => theme.id === activeId)[0];
+			const fonts = (pack && pack.fonts) || {};
+			const next = {};
+			for (const role of FONT_ROLES) {
+				if (typeof fonts[role] === "string" && fonts[role] !== "") next[role] = fonts[role];
+			}
+			for (const role of FONT_ROLES) {
+				try {
+					if (next[role] !== undefined) service.setFontFamily(role, next[role]);
+					else if (appliedFontRoles[role]) service.setFontFamily(role, "");
+				} catch (error) {
+					/* the host may refuse a write; the palette still applies */
+				}
+			}
+			appliedFontRoles = next;
+		}
+
 		function readCatalog() {
 			const boot = globalThis.__DSH_THEME_MANAGER__;
 			if (boot && Array.isArray(boot.themes)) {
@@ -245,6 +275,7 @@ window.__ModuleLoader__.load({
 			}
 			if (globalThis.__DSH_THEME_MANAGER__) globalThis.__DSH_THEME_MANAGER__.active = next;
 			paint();
+			applyPackFonts(next);
 			emit();
 		}
 
@@ -515,6 +546,7 @@ window.__ModuleLoader__.load({
 		const inject = ["slots", "locale", "theme"];
 
 		function apply(ctx) {
+			themeService = ctx.theme;
 			ctx.effect(() => ctx.locale.register(NS, DICTIONARIES), "theme-manager: locale");
 
 			ctx.effect(() => {
@@ -528,6 +560,7 @@ window.__ModuleLoader__.load({
 			}, "theme-manager: row styles");
 
 			paint();
+			applyPackFonts(state.active);
 			refreshSource();
 			ctx.on("theme/change", () => {
 				applyBackground();

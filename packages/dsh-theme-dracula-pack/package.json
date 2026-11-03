@@ -1,6 +1,6 @@
 {
   "name": "dsh-theme-dracula-pack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Dracula palette pack for dsh-theme-picker",
   "type": "module",
   "main": "package.json",
@@ -46,7 +46,10 @@
         "#50fa7b",
         "#f1fa8c",
         "#ff5555"
-      ]
+      ],
+      "fonts": {
+        "terminal": "JetBrainsMono NFM, JetBrainsMono NL NFM, MesloLGM NF, Cascadia Mono, Consolas, Microsoft YaHei, monospace"
+      }
     },
     "marketplace": {
       "profiles": [

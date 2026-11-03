@@ -156,6 +156,20 @@ function readPack(pkgDir, manifest) {
   } catch {
     return null
   }
+/** Keep only the font roles a pack actually declares.
+ * @param fonts - the pack's `dsh.theme.fonts` object.
+ * @returns a role -> family-list map, possibly empty.
+ */
+function readFonts(fonts) {
+  const out = {}
+  if (!fonts || typeof fonts !== 'object') return out
+  for (const role of ['text', 'code', 'terminal']) {
+    const value = fonts[role]
+    if (typeof value === 'string' && value.trim() !== '') out[role] = value.trim()
+  }
+  return out
+}
+
   return {
     id: theme.id,
     name: typeof theme.name === 'string' && theme.name !== '' ? theme.name : theme.id,
@@ -164,6 +178,7 @@ function readPack(pkgDir, manifest) {
     swatches: Array.isArray(theme.swatches)
       ? theme.swatches.filter((color) => typeof color === 'string').slice(0, 8)
       : [],
+    fonts: readFonts(theme.fonts),
     css,
   }
 }
@@ -269,6 +284,7 @@ function bootScript(packs) {
     description: pack.description,
     colorScheme: pack.colorScheme,
     swatches: pack.swatches,
+    fonts: pack.fonts,
   }))
   const json = JSON.stringify(catalog).replace(/</g, '\\u003c')
   return `(function () {
