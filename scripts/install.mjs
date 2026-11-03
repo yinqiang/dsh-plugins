@@ -7,8 +7,10 @@
  *   node scripts/install.mjs --profile desktop --uninstall --apply
  *
  * The plugin is symlinked instead of copied, so edits here reach dsh on the next
- * start. Registration is only the package name in `dsh.profile.bundles`: every
- * package ships its own `dsh.bundle.patch.yml`, which inserts the Loader rows.
+ * start. Registration is the package name in `dsh.profile.bundles` (every package
+ * ships its own `dsh.bundle.patch.yml`, which inserts the Loader rows) plus a
+ * `link:` entry in `dependencies`: the plugin panel reads that field to decide a
+ * package is installed, so a bundles-only registration loads but stays invisible.
  *
  * Writes land under $DSH_HOME (default ~/.dsh), outside any session workspace.
  */
@@ -49,6 +51,7 @@ const packages = readdirSync(packagesRoot, { withFileTypes: true })
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const bundles = manifest.dsh?.profile?.bundles ?? []
+const dependencies = manifest.dependencies ?? {}
 
 console.log(`profile  ${profileDir}`)
 console.log(`bundles  ${bundles.join(', ')}`)
@@ -70,9 +73,11 @@ for (const pack of packages) {
   const present = existsSync(linkPath)
   const linked = present && lstatSync(linkPath).isSymbolicLink()
   const listed = bundles.includes(pack.name)
+  const recorded = dependencies[pack.name]
   console.log(
     `\n${pack.name}\n  link     ${present ? (linked ? 'symlink' : 'directory (not ours)') : 'missing'}` +
-      `\n  bundles  ${listed ? 'registered' : 'not registered'}`,
+      `\n  bundles  ${listed ? 'registered' : 'not registered'}` +
+      `\n  deps     ${recorded ?? 'not recorded (the plugin panel hides this package)'}`,
   )
 }
 
@@ -109,6 +114,17 @@ for (const pack of packages) {
 manifest.dsh = manifest.dsh ?? {}
 manifest.dsh.profile = manifest.dsh.profile ?? {}
 manifest.dsh.profile.bundles = [...bundles.filter((name) => next.has(name)), ...[...next].filter((name) => !bundles.includes(name))]
+
+/* The 插件 panel takes "installed" from the profile manifest's dependencies, not
+   from `dsh.profile.bundles`: a bundle registered only as a name loads at start
+   but never appears under 已安装插件. Save the same link spec pnpm would record. */
+manifest.dependencies = { ...(manifest.dependencies ?? {}) }
+for (const pack of packages) {
+  if (uninstall) delete manifest.dependencies[pack.name]
+  else manifest.dependencies[pack.name] = `link:${pack.dir.replace(/\\/g, '/')}`
+}
+
 writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
 console.log(`\nbundles  ${manifest.dsh.profile.bundles.join(', ')}`)
+console.log(`deps     ${Object.keys(manifest.dependencies).join(', ') || '(none)'}`)
 console.log('restart dsh to apply.')
