@@ -12,7 +12,8 @@
   "files": [
     "lib",
     "dsh.bundle.patch.yml",
-    "README.md"
+    "README.md",
+    "README.zh.md"
   ],
   "keywords": [
     "dsh-plugin",

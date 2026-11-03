@@ -1,51 +1,54 @@
 # dsh-theme-dracula-pack
 
-[dsh-theme-picker](../dsh-theme-picker) 的 Dracula 配色包。
+English | [中文](./README.zh.md)
 
-> 配色、token 覆盖与首帧注入方案来自 [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack)（MIT）。
-> 这里只做了一件事：把作用域从 `body[data-dsh-dracula]` 换成 `body[data-dsh-theme="dracula"]`，让管理器统一调度。颜色一个没改。
+The Dracula palette for [dsh-theme-picker](../dsh-theme-picker).
 
-## 安装
+> The palette, the token coverage and the first-paint injection come from [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack) (MIT).
+> One thing changed: the scope moved from `body[data-dsh-dracula]` to `body[data-dsh-theme="dracula"]`, so the picker can drive it like any other pack. Not a single colour was touched.
+
+## Install
 
 ```sh
 dsh plugin add dsh-theme-dracula-pack
 ```
 
-需要同时安装 `dsh-theme-picker`，否则它只是躺在 node_modules 里的数据，没有入口。
+`dsh-theme-picker` has to be installed as well, or this is just data sitting in `node_modules` with nothing to read it.
 
-## 覆盖范围
+## Coverage
 
-| 层 | 数量 | 例子 |
+| Layer | Count | Examples |
 | --- | --- | --- |
-| `--dsw-alias-*` | 101 | 背景、文字、边框、按钮、状态色 |
-| `--dsw-specific-*` | 11 | 侧栏、输入框、气泡、菜单 |
-| `--shiki-token-*` | 11 | 代码高亮 |
-| 其他 | 2 | think 渐变、文字选区 |
+| `--dsw-alias-*` | 101 | backgrounds, text, borders, buttons, state colours |
+| `--dsw-specific-*` | 11 | sidebar, composer, bubbles, menus |
+| `--shiki-token-*` | 11 | syntax highlighting |
+| others | 2 | the think gradient, text selection |
 
-页面底色 `#20212b`，侧栏与代码块 `#282a36`，卡片 `#2e3040`，选中 `#44475a`，强调 `#bd93f9`。
+Page background `#20212b`, sidebar and code blocks `#282a36`, cards `#2e3040`, selection `#44475a`, accent `#bd93f9`.
 
-## 字体
+## Fonts
 
-清单里声明了终端字体栈（`dsh.theme.fonts.terminal`）：
+The manifest declares a terminal font stack (`dsh.theme.fonts.terminal`):
 
 ```
 JetBrainsMono NFM, JetBrainsMono NL NFM, MesloLGM NF, Cascadia Mono, Consolas, Microsoft YaHei, monospace
 ```
 
-前几个是 Nerd Font 的等宽变体（图标与正文同宽，不会撑歪列对齐），后面兜底中文与系统等宽。选中本主题时由 `dsh-theme-picker` 写入主题服务；切到别的主题时交还默认。
+The first entries are Nerd Font monospace variants — icons keep the same advance width as text, so column alignment survives. The tail falls back to CJK and system monospace. The picker writes this stack into the theme service when the theme is selected and hands the default back when you switch away.
 
-> 机器上缺 Nerd Font 的话图标仍会显示成方块。可从 [nerd-fonts](https://github.com/ryanoasis/nerd-fonts/releases) 取 JetBrainsMono 装上，或把清单换成你自己有的字体。
+> Without a Nerd Font installed, icons still render as boxes. Grab JetBrainsMono from [nerd-fonts](https://github.com/ryanoasis/nerd-fonts/releases), or change the stack to something you have.
 
-## 终端
+## Terminal
 
-侧边栏终端默认被 xterm 用 `--dsw-alias-bg-base` 铺成实底，会挡住背景图。这里改成透明，外层容器留 45% 底色保证文字可读：
+The sidebar terminal is filled by xterm with `--dsw-alias-bg-base`, which hides the background image. This pack makes the terminal transparent and leaves 45% of the base colour on the container so text stays readable:
 
 ```css
 :root:root body[data-dsh-theme="dracula"] .xterm .xterm-viewport { background: transparent !important; }
 :root:root body[data-dsh-theme="dracula"] [class*="_screen"]:has(.xterm) { background: color-mix(in srgb, #20212b 45%, transparent) !important; }
 ```
 
-想要完全透明，把第二行的 `45%` 改成 `0%`。
-## 许可
+For a fully transparent terminal, change the `45%` on the second line to `0%`.
 
-MIT，见 [LICENSE](./LICENSE)。
+## License
+
+MIT, see [LICENSE](./LICENSE).

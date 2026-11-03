@@ -1,71 +1,80 @@
 # dsh-plugins
 
-一组 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件。每个包都声明 `dsh.bundle`，所以可以用官方的 `dsh plugin add` 装，也能进插件市场索引。
+English | [中文](./README.zh.md)
 
-## 插件
+A collection of [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugins, kept in one pnpm workspace.
 
-| 包 | 作用 | 类别 |
+Every package declares `dsh.bundle` — the manifest field the Harness plugin list accepts. That single field is what makes a package installable with `dsh plugin add`, gives it its own Loader rows at start-up, and qualifies it for the plugin marketplace.
+
+## Plugins
+
+| Package | What it does | Kind |
 | --- | --- | --- |
-| [`dsh-balance-floater`](./packages/dsh-balance-floater) | 余额贴在左下角头像按钮右侧，余额一掉就飘出街机风格的伤害数字 | UI |
-| [`dsh-theme-picker`](./packages/dsh-theme-picker) | 装多个主题包、随时切换、首帧不闪 | 主题 |
-| [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | 给主题管理器用的 Dracula 配色包 | 主题 |
-| [`dsh-solar-term`](./packages/dsh-solar-term) | 对话页左上角的节气牌：当前节气、交节日期、距下一个节气还有几天 | UI |
+| [`dsh-balance-floater`](./packages/dsh-balance-floater) | Puts the account balance beside the sidebar account button, and pops arcade damage numbers whenever it drops | UI |
+| [`dsh-theme-picker`](./packages/dsh-theme-picker) | Installs any number of theme packs and switches between them instantly, with no reload and no first-paint flash | Theme |
+| [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | A Dracula palette pack for the theme picker | Theme |
+| [`dsh-solar-term`](./packages/dsh-solar-term) | A solar-term badge at the top-left of the conversation: the current term, its exact moment, and the days until the next one | UI |
 
-## 包名说明
+## Package names
 
-`dsh-theme-picker` 不叫 `dsh-theme-manager`，是因为那个名字在 npm 上已被别人的同类插件占用；`dsh-theme-dracula-pack` 加 `-pack` 后缀是为了和上游 [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula)（一个独立插件）区分开。
+`dsh-theme-picker` is not called `dsh-theme-manager` because that name is already taken on npm by an unrelated plugin of the same kind. `dsh-theme-dracula-pack` carries the `-pack` suffix to stay distinguishable from the upstream [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula) plugin, which is a plugin of its own. Read the full name before installing.
 
-## 不发布到 npm 也能装
+## Install
 
-npm 只是让插件市场索引能搜到你。真正安装只需要一个 `.tgz`，GitHub Release 的资产直链就是完整入口：
+```sh
+dsh plugin add dsh-balance-floater
+dsh plugin add dsh-theme-picker
+dsh plugin add dsh-theme-dracula-pack
+dsh plugin add dsh-solar-term
+```
+
+Restart DSH once afterwards — Loader rows are read at start-up only.
+
+A theme pack needs the picker to be useful: install `dsh-theme-picker` together with `dsh-theme-dracula-pack`.
+
+### From the marketplace
+
+Add an index source under **Settings → Plugins → Discover → Index sources**, then search for the package name.
+
+### Without npm: GitHub Releases
+
+npm only matters for the marketplace index. Installing needs nothing but a `.tgz`, and a release asset URL is a complete entry point:
 
 ```sh
 dsh plugin add https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-theme-picker.tgz
 ```
 
-打一个 tag 就会生成这些资产（`NPM_TOKEN` 为空时自动跳过 npm 那一步，其余照常）：
+Pushing a tag builds those assets (the npm step is skipped automatically when `NPM_TOKEN` is empty):
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-`awesome-dsh-plugin` 也接受只存在于 GitHub 的插件：机器索引里搜不到，但列表条目会带一条可复制的安装命令。想进索引再补 npm。
-
-## 安装
-
-```sh
-dsh plugin add dsh-balance-floater
-dsh plugin add dsh-theme-picker
-dsh plugin add dsh-theme-dracula-pack
-```
-
-装完重启一次 DSH（Loader 行只在启动时读取）。
-
-也可以从市场装：**设置 → 插件 → Discover → Index sources** 里添加索引源，然后搜索包名。或者直接用发布产物：
-
-```sh
-dsh plugin add https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-theme-picker.tgz
-```
-
-### 本地开发
+## Local development
 
 ```sh
 git clone https://github.com/yinqiang/dsh-plugins
 cd dsh-plugins
-node scripts/install.mjs --profile desktop          # 打印计划
-node scripts/install.mjs --profile desktop --apply  # 建软链 + 登记到 dsh.profile.bundles
+node scripts/install.mjs --profile desktop           # print the plan; change nothing
+node scripts/install.mjs --profile desktop --apply   # link, register, record the dependency
 ```
 
-脚本只做两件事：在 `~/.dsh/profiles/<profile>/node_modules/` 下建软链，把包名追加进该 profile 的 `dsh.profile.bundles`。它不会改 `dependencies`，也不会碰 `pnpm-lock.yaml`。
+The script does three things, and the third one is easy to miss:
 
-> 如果你之前手写过 `cordis.patch.yml` 的 `insert` 行来装这些插件，**先删掉那几行**。同一个包从两个 Loader 来源加载会被 client-modules 拒绝。
+1. links each package into `~/.dsh/profiles/<profile>/node_modules/` (a junction on Windows, a directory symlink elsewhere), so edits reach DSH on the next start;
+2. appends the package name to that profile's `dsh.profile.bundles`, so its `dsh.bundle.patch.yml` is applied at start-up;
+3. records `link:<repo path>` in the profile's `dependencies`, because that is the field the **Plugins → Installed** list reads. A package registered only as a bundle loads perfectly and never appears there — the full story is in [AGENTS.md](./AGENTS.md#the-install-contract).
 
-## 为什么是 bundle
+It never runs pnpm and never touches `pnpm-lock.yaml`.
 
-DSH 的插件清单只认 `package.json` 里的 **`dsh.bundle`** 声明。只写 `dsh.client` 的包能被浏览器加载，但装不上、也不会出现在插件页。
+> If you installed these packages earlier by hand-writing `insert` rows in the profile's `cordis.patch.yml`, delete those rows first: one package loaded from two Loader sources is refused by the client module system.
 
-所以每个包都带一份 `dsh.bundle.patch.yml`，里面是它要插入的 Loader 行：
+## Why every package is a bundle
+
+DSH's plugin list only accepts a package whose `package.json` declares **`dsh.bundle`**. A package with `dsh.client` alone can still be loaded by the browser, but it cannot be installed and never shows up on the plugin page.
+
+So every package here ships a `dsh.bundle.patch.yml` holding the Loader rows it inserts:
 
 ```yaml
 # packages/dsh-theme-picker/dsh.bundle.patch.yml
@@ -74,79 +83,87 @@ DSH 的插件清单只认 `package.json` 里的 **`dsh.bundle`** 声明。只写
       name: dsh-theme-picker
 ```
 
-包名出现在 `dsh.profile.bundles` 里 → 启动时这份 patch 被应用 → 行插进 Loader。整个过程不需要用户手改任何 YAML。
+The package name in `dsh.profile.bundles` makes that patch apply at start-up, which inserts the row. Nobody edits YAML by hand.
 
-`dsh-theme-dracula-pack` 是个纯数据包，patch 是空数组 `[]`——它不改 Loader，只是让 `dsh plugin add` 能把它装进 `node_modules` 让管理器读到。
+`dsh-theme-dracula-pack` is pure data: its patch is an empty array (`[]`). It contributes no Loader rows; the bundle declaration exists so `dsh plugin add` can put it into `node_modules` where the picker finds it.
 
-## 目录
+## Layout
 
 ```
 packages/
   dsh-balance-floater/
     package.json          dsh.bundle + dsh.client
-    dsh.bundle.patch.yml  插入 Loader 行
-    lib/index.js          宿主半（空 apply，给 Loader 一个入口）
-    lib/client.js         手写 client bundle，无构建步骤
+    dsh.bundle.patch.yml  the Loader rows this package inserts
+    lib/index.js          host half (an empty apply; it exists to be a Loader row)
+    lib/client.js         hand-written client bundle, no build step
   dsh-theme-picker/
   dsh-theme-dracula-pack/
-    theme/theme.css       作用域写死的调色板
+    theme/theme.css       palette, scoped by the file itself
+  dsh-solar-term/
+    locale/*.json         user-facing strings
 scripts/
-  install.mjs             本地软链安装
-  pack.mjs                打包成 dist/*.tgz
-  check.mjs               CI 门禁：dsh.bundle、patch、bundle id 与包名一致
-  awesome-lib.mjs         上架逻辑（校验 + 建 PR），可被宿主进程直接 import
-  awesome-pr.mjs          上架 CLI
+  install.mjs             local link install (link + bundles + dependencies)
+  pack.mjs                pack every package into dist/*.tgz
+  check.mjs               the CI gate: dsh.bundle, a parseable patch, client id == package name
+  awesome-lib.mjs         marketplace submission logic, importable by a host process
+  awesome-pr.mjs          the submission CLI
 catalog/
-  *.yml                   提交到 awesome-dsh-plugin 的条目草稿
+  *.yml                   entry drafts for awesome-dsh-plugin
 .github/workflows/
-  check.yml               PR 校验
-  release.yml             tag 触发：打包 + 发 npm + 挂 release 资产
+  check.yml               pull-request gate
+  release.yml             tag trigger: pack, publish to npm, attach release assets
 ```
 
-## 发布
+## Release
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-`release.yml` 会为每个包生成 `dist/<name>-<version>.tgz` 和固定别名的 `dist/<name>.tgz`，挂到 GitHub Release；配置了 `NPM_TOKEN` secret 就同时发 npm。
+`release.yml` packs `dist/<name>-<version>.tgz` plus a stable `dist/<name>.tgz` alias for each package, attaches both to the GitHub Release, and publishes to npm when the `NPM_TOKEN` secret exists.
 
-版本号各自写在包自己的 `package.json` 里，一次 tag 可以只发其中一个包的补丁版本——npm 会跳过已经存在的版本。
+Versions live in each package's own `package.json`, so one tag can ship a patch release of a single package — npm skips versions that already exist.
 
-## 上架插件市场
+## Listing in the plugin marketplace
 
-[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 是官方索引，按**插件**收录。monorepo 的子包有专门写法（来自它的 contributing.md）：
+[awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) is the official index. It indexes *plugins*, and a monorepo subpackage has its own spelling (from its contributing guide):
 
-| 字段 | monorepo 子包怎么写 |
+| Field | A monorepo subpackage |
 | --- | --- |
 | `url` | `https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-theme-picker` |
 | `name` | `yinqiang/dsh-plugins#dsh-theme-picker` |
-| 文件名 | `yinqiang__dsh-plugins--packages-dsh-theme-picker.yml` |
+| File name | `yinqiang__dsh-plugins--packages-dsh-theme-picker.yml` |
 
-三道门槛：
+Three gates apply:
 
-1. `package.json` 声明 **`dsh.bundle`**，PR 会自动检查——只写 `dsh.client` 是最常见的被拒原因；
-2. 仓库至少存在 1 天，且带 `dsh-plugin` topic；
-3. 索引只收录**已发 npm 且有明确版本**的包，没发的仍能装但不会出现在市场里。
+1. `package.json` declares **`dsh.bundle`** — checked automatically on the PR, and declaring `dsh.client` only is the most common reason a submission is rejected;
+2. the repository is at least one day old and carries the `dsh-plugin` topic;
+3. the index only lists packages that are **published to npm with a concrete version**. Unpublished ones stay installable, they just do not appear in the marketplace.
 
-`catalog/` 里已经放好三个条目。提交是一个命令：
+`catalog/` holds drafts for three packages. Submitting is one command:
 
 ```sh
-node scripts/awesome-pr.mjs            # 四道门禁逐个核对，不动任何东西
-node scripts/awesome-pr.mjs --submit   # fork → 开分支 → 加三个文件 → 开一个 PR
+node scripts/awesome-pr.mjs            # check all four gates, change nothing
+node scripts/awesome-pr.mjs --submit   # fork, branch, add the files, open one PR
 ```
 
-门禁分别是：仓库满 24 小时、带 `dsh-plugin` topic、三个子包在 `main` 上都声明了 `dsh.bundle`（并指向真实存在的 patch 文件）、`data/plugins/` 里还没有同名文件。任何一道不过就退出，不会留下半个 PR。
+The gates: the repository is older than 24 hours, it carries the `dsh-plugin` topic, every subpackage on `main` declares `dsh.bundle` pointing at a patch file that exists, and `data/plugins/` has no file of the same name yet. Any failure exits without leaving half a PR behind.
 
-`--submit` 需要一个 GitHub token（classic 的 `public_repo`，或 fine-grained 的 Contents + Pull requests 写权限）：
+`--submit` needs a GitHub token (classic `public_repo`, or fine-grained Contents + Pull requests write):
 
 ```sh
 GITHUB_TOKEN=ghp_xxx node scripts/awesome-pr.mjs --submit
 ```
 
-> ⚠️ 在 DSH 沙箱里跑不通：子进程的出站 TLS 会被安全策略重置（宿主进程正常），所以请在普通终端里执行。拿不到 token 时 `scripts/awesome-lib.mjs` 可以被宿主的 node 进程直接 import 调用，绕开子进程。
+> ⚠️ This does not work inside the DSH sandbox: outbound TLS from a child process is reset by the security policy. Run it in a normal terminal. Without a token, a host node process can import `scripts/awesome-lib.mjs` directly and call the same functions.
 
-## 许可
+## Troubleshooting
 
-MIT。`dsh-theme-dracula-pack` 的调色板沿用 [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack) 的 MIT 许可与署名。
+**The plugin works, but Plugins → Installed is empty.** The profile lists the package in `dsh.profile.bundles` but has no matching entry in `dependencies`, and the panel derives "installed" from the latter. Add `"<name>": "link:<path-to-package>"` to `~/.dsh/profiles/<profile>/package.json`, or reinstall through `dsh plugin add`. **Settings → Built-in plugins** should still show the running plugin, which confirms the diagnosis.
+
+**One package loads twice, or the client module system refuses it.** A leftover `insert` row in `cordis.patch.yml` names the same package that is also registered as a bundle. Remove the row.
+
+## License
+
+MIT. The `dsh-theme-dracula-pack` palette keeps the MIT license and attribution of [PuerJJJ/dsh-theme-dracula-pack](https://github.com/PuerJJJ/dsh-theme-dracula-pack).
