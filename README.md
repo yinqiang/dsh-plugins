@@ -14,6 +14,23 @@
 
 `dsh-theme-picker` 不叫 `dsh-theme-manager`，是因为那个名字在 npm 上已被别人的同类插件占用；`dsh-theme-dracula-pack` 加 `-pack` 后缀是为了和上游 [PuerJJJ/dsh-theme-dracula](https://github.com/PuerJJJ/dsh-theme-dracula)（一个独立插件）区分开。
 
+## 不发布到 npm 也能装
+
+npm 只是让插件市场索引能搜到你。真正安装只需要一个 `.tgz`，GitHub Release 的资产直链就是完整入口：
+
+```sh
+dsh plugin add https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-theme-picker.tgz
+```
+
+打一个 tag 就会生成这些资产（`NPM_TOKEN` 为空时自动跳过 npm 那一步，其余照常）：
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+`awesome-dsh-plugin` 也接受只存在于 GitHub 的插件：机器索引里搜不到，但列表条目会带一条可复制的安装命令。想进索引再补 npm。
+
 ## 安装
 
 ```sh
