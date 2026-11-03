@@ -1,7 +1,7 @@
 {
   "name": "dsh-balance-floater",
-  "version": "0.1.0",
-  "description": "Sidebar account balance with arcade damage numbers whenever it drops",
+  "version": "0.2.0",
+  "description": "Account balance beside the sidebar account button, with arcade damage numbers whenever it drops",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

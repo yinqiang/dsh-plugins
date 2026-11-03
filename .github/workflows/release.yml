@@ -28,12 +28,21 @@ jobs:
       - name: Pack every package
         run: node scripts/pack.mjs
 
+      # One tag can ship one package: bump only that version and the rest are
+      # skipped below, because npm rejects a republish with E403 and a bare
+      # publish step would abort the job before the release assets attach.
       - name: Publish to npm
         if: env.NPM_TOKEN != ''
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for dir in packages/*/; do
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "skip $name@$version - already on npm"
+              continue
+            fi
             (cd "$dir" && pnpm publish --access public --no-git-checks)
           done
 

@@ -6,7 +6,7 @@
 
 | 包 | 作用 | 类别 |
 | --- | --- | --- |
-| [`dsh-balance-floater`](./packages/dsh-balance-floater) | 侧边栏余额条，余额一掉就飘出街机风格的伤害数字 | UI |
+| [`dsh-balance-floater`](./packages/dsh-balance-floater) | 余额贴在左下角头像按钮右侧，余额一掉就飘出街机风格的伤害数字 | UI |
 | [`dsh-theme-picker`](./packages/dsh-theme-picker) | 装多个主题包、随时切换、首帧不闪 | 主题 |
 | [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | 给主题管理器用的 Dracula 配色包 | 主题 |
 
