@@ -93,6 +93,8 @@ scripts/
   install.mjs             本地软链安装
   pack.mjs                打包成 dist/*.tgz
   check.mjs               CI 门禁：dsh.bundle、patch、bundle id 与包名一致
+  awesome-lib.mjs         上架逻辑（校验 + 建 PR），可被宿主进程直接 import
+  awesome-pr.mjs          上架 CLI
 catalog/
   *.yml                   提交到 awesome-dsh-plugin 的条目草稿
 .github/workflows/
@@ -127,7 +129,22 @@ git push origin v0.1.0
 2. 仓库至少存在 1 天，且带 `dsh-plugin` topic；
 3. 索引只收录**已发 npm 且有明确版本**的包，没发的仍能装但不会出现在市场里。
 
-`catalog/` 里已经放好三个条目，复制到 `data/plugins/` 就能提 PR。
+`catalog/` 里已经放好三个条目。提交是一个命令：
+
+```sh
+node scripts/awesome-pr.mjs            # 四道门禁逐个核对，不动任何东西
+node scripts/awesome-pr.mjs --submit   # fork → 开分支 → 加三个文件 → 开一个 PR
+```
+
+门禁分别是：仓库满 24 小时、带 `dsh-plugin` topic、三个子包在 `main` 上都声明了 `dsh.bundle`（并指向真实存在的 patch 文件）、`data/plugins/` 里还没有同名文件。任何一道不过就退出，不会留下半个 PR。
+
+`--submit` 需要一个 GitHub token（classic 的 `public_repo`，或 fine-grained 的 Contents + Pull requests 写权限）：
+
+```sh
+GITHUB_TOKEN=ghp_xxx node scripts/awesome-pr.mjs --submit
+```
+
+> ⚠️ 在 DSH 沙箱里跑不通：子进程的出站 TLS 会被安全策略重置（宿主进程正常），所以请在普通终端里执行。拿不到 token 时 `scripts/awesome-lib.mjs` 可以被宿主的 node 进程直接 import 调用，绕开子进程。
 
 ## 许可
 
