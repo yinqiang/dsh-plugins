@@ -6,7 +6,7 @@
 
 - 位置：侧边栏左下角**头像按钮那一行的右侧**。头像来自 `settings.launcher` 槽（`client-ui-settings-account`），它所在的 `triggerRow` 是底部唯一横向排布的行，所以余额作为它的兄弟节点插进去，而不是走 `sidebar.footer.action`（那个槽是单独一块，只能落在上面一行）
 - 折叠成 56px 轨道时自动隐藏：那点宽度放不下头像以外的第二个元素
-- 数据：`ctx.remote.account.getBalance()`，每 **3 分钟**轮询一次；切回窗口、点击余额都会立即刷新
+- 数据：`ctx.remote.account.getBalance()`，每 **3 分钟**轮询一次；切回窗口、点击余额、**每个任务完成后**都会立即刷新（任务完成通过 `ctx.remote.$on("api-session/status")` 的 `running === false` 判定）
 - 掉血：红色 `-¥0.42` 上浮淡出，随机横向偏移与旋转；单次跌破 ¥1 自动放大成暴击字号
 - 回血：余额上涨时绿色 `+¥100.00`
 - 状态点：绿=正常，灰=未登录，橙=上一次读取失败（保留旧值）
