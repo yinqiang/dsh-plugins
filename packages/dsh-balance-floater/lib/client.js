@@ -214,7 +214,7 @@ window.__ModuleLoader__.load({
 			if (state.bonusCents > 0) parts.push("赠金 " + formatMoney(state.bonusCents, state.currency));
 			if (state.error) parts.push("最近一次读取失败，显示的是上一次结果");
 			if (state.updatedAt > 0) parts.push("更新于 " + new Date(state.updatedAt).toLocaleTimeString());
-			parts.push("每 3 分钟自动刷新 · 任务完成后刷新 · 点击立即刷新");
+			parts.push("每 3 分钟自动刷新 · 点击立即刷新");
 			pill.title = parts.join(" · ");
 			pill.setAttribute("aria-label", "账户余额 " + (signedOut ? "未登录" : money));
 		}
@@ -293,11 +293,6 @@ window.__ModuleLoader__.load({
 				};
 				document.addEventListener("visibilitychange", onVisible);
 
-				// A turn just finished: the account may have been charged, so re-read now.
-				const offTaskDone = ctx.remote.$on("api-session/status", function (_sessionId, running) {
-					if (running === false && refresh !== null) refresh();
-				});
-
 				refresh();
 				const timer = window.setInterval(refresh, POLL_MS);
 
@@ -306,7 +301,6 @@ window.__ModuleLoader__.load({
 					observer.disconnect();
 					window.clearInterval(timer);
 					document.removeEventListener("visibilitychange", onVisible);
-					offTaskDone();
 					if (pill !== null) pill.remove();
 					if (layer !== null) layer.remove();
 					pill = null;

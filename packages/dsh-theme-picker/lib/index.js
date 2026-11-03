@@ -22,7 +22,8 @@
  * The CSS file owns its own scoping; the manager only concatenates and injects
  * it, and publishes the catalogue to the browser through the boot script.
  */
-import { readdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -38,6 +39,87 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 
 /** Last resolved catalogue. */
 let cache = { root: null, at: 0, packs: [] }
+
+/** Resolved preset sources: image URLs fetched server-side to dodge CORS. */
+const SOURCES_FILE = join(homedir(), '.dsh', '.dsh-theme-picker-sources.json')
+const DEBUG_FILE = join(homedir(), '.dsh', '.dsh-theme-picker-debug.log')
+
+let sourceCache = { bing: null, bingAt: 0, wallhaven: null }
+
+try {
+  const saved = JSON.parse(readFileSync(SOURCES_FILE, 'utf8'))
+  if (saved && typeof saved.bing === 'string' && saved.bing !== '') sourceCache.bing = saved.bing
+  if (saved && typeof saved.wallhaven === 'string' && saved.wallhaven !== '') sourceCache.wallhaven = saved.wallhaven
+} catch (error) {
+  /* first launch: nothing cached yet, the fetch below fills it */
+}
+
+function saveSources() {
+  try {
+    writeFileSync(SOURCES_FILE, JSON.stringify({ bing: sourceCache.bing, wallhaven: sourceCache.wallhaven }, null, 2))
+  } catch (error) {
+    /* read-only home: the cache stays in memory */
+  }
+}
+
+function debugLog(message) {
+  try {
+    appendFileSync(DEBUG_FILE, new Date().toISOString() + ' ' + message + '\n')
+  } catch (error) {
+    /* logging is best effort */
+  }
+}
+
+async function fetchBing(quiet) {
+  try {
+    const response = await fetch('https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN')
+    const json = await response.json()
+    const image = json && json.images && json.images[0]
+    if (image && typeof image.url === 'string') {
+      sourceCache.bing = 'https://cn.bing.com' + image.url
+      sourceCache.bingAt = Date.now()
+      saveSources()
+      if (!quiet) debugLog('bing ok ' + sourceCache.bing)
+    } else if (!quiet) {
+      debugLog('bing no image in payload')
+    }
+  } catch (error) {
+    if (!quiet) debugLog('bing fail: ' + String(error && error.message ? error.message : error))
+  }
+}
+
+async function fetchWallhaven(quiet) {
+  try {
+    const response = await fetch('https://wallhaven.cc/api/v1/search?sorting=random&purity=100&atleast=1920x1080&categories=100')
+    const json = await response.json()
+    const item = json && json.data && json.data[0]
+    if (item && typeof item.path === 'string') {
+      sourceCache.wallhaven = item.path
+      saveSources()
+      if (!quiet) debugLog('wallhaven ok ' + sourceCache.wallhaven)
+    } else if (!quiet) {
+      debugLog('wallhaven no image in payload')
+    }
+  } catch (error) {
+    if (!quiet) debugLog('wallhaven fail: ' + String(error && error.message ? error.message : error))
+  }
+}
+
+/**
+ * Resolve the presets before the first page is served, so the boot script always
+ * carries real URLs. Top-level await finishes at import time, which the loader
+ * completes before apply() and before the web server answers a request. Capped
+ * so a dead network cannot hold up startup.
+ */
+try {
+  await Promise.race([
+    Promise.all([fetchBing(), fetchWallhaven()]),
+    new Promise((done) => setTimeout(done, 3000)),
+  ])
+  debugLog('resolved at load: bing=' + sourceCache.bing + ' wallhaven=' + sourceCache.wallhaven)
+} catch (error) {
+  debugLog('resolve at load threw: ' + String(error && error.message ? error.message : error))
+}
 
 /**
  * Walk up from this module until a node_modules directory shows up.
@@ -204,7 +286,8 @@ function bootScript(packs) {
     if (THEMES[index].id === active) known = true;
   }
   if (!known) active = null;
-  globalThis.__DSH_THEME_MANAGER__ = { themes: THEMES, active: active };
+  var SOURCES = ${JSON.stringify({ bing: sourceCache.bing, wallhaven: sourceCache.wallhaven })};
+  globalThis.__DSH_THEME_MANAGER__ = { themes: THEMES, active: active, sources: SOURCES };
   var body = document.body;
   if (!body) return;
   if (active === null) body.removeAttribute(ATTR);
@@ -222,6 +305,8 @@ export const name = 'theme-manager'
  */
 export function apply(ctx, config) {
   ctx.on('webserver/index-inject', (table) => {
+    fetchWallhaven(true)
+    if (Date.now() - sourceCache.bingAt > 3600000) fetchBing(true)
     const packs = loadPacks(config)
     for (const pack of packs) table.push({ kind: 'style', text: pack.css })
     table.push({ kind: 'script', placement: 'body', text: bootScript(packs) })
