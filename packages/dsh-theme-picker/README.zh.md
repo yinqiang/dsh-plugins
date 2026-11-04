@@ -66,9 +66,11 @@ CSS 自己负责 scope，选择器写成 `:root:root body[data-dsh-theme="solari
 - **压暗** 滑块控制图片上那层 scrim，太亮就往右拉
 - **每日必应 / 随机壁纸** 两个预置来源
 
+两个预置都是活的：再点一次 **每日必应** 或 **随机壁纸**，即使已经选中也会重新取图，随机那张每次点都换一张。选中每日之后，页面每小时核对一次，窗口从后台回来时也会核对，所以跨过零点不用刷新、不用重启就会换图；随机那张会一直留着，直到你再点一次。
+
 文字表面（卡片、输入框、菜单）保持主题色，只有页面底和侧栏透出图片，所以消息区不会被洗白。
 
-两个预置来源的解析发生在**宿主进程**：`cn.bing.com` 与 `wallhaven.cc` 的 API 都不发 CORS 头，浏览器里直接 fetch 会 `Failed to fetch`。宿主在模块加载时（top-level await）把图片直链解析好写进首帧脚本，客户端只读直链、把它当 CSS 背景用——图片加载本来就不受 CORS 限制。解析结果缓存到 `~/.dsh/.dsh-theme-picker-sources.json`，离线时沿用上一次的图。
+两个预置来源的解析发生在**宿主进程**：`cn.bing.com` 与 `wallhaven.cc` 的 API 都不发 CORS 头，浏览器里直接 fetch 会 `Failed to fetch`。宿主在模块加载时（top-level await）把图片直链解析好写进首帧脚本，并额外提供 `/plugins/theme-picker/source?kind=bing` 给已经打开的页面；客户端只读直链、把它当 CSS 背景用——图片加载本来就不受 CORS 限制。解析结果缓存到 `~/.dsh/.dsh-theme-picker-sources.json`，离线时沿用上一次的图。
 
 ## 注意
 

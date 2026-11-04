@@ -49,6 +49,10 @@ window.__ModuleLoader__.load({
 		];
 		const BG_INLINE_PROPS = ["background-image", "background-color", "background-size", "background-position", "background-repeat", "background-attachment"];
 		const BG_SCRIM_DEFAULT = 0.45;
+		/** How often a running page re-checks the daily preset. */
+		const SOURCE_CHECK_MS = 60 * 60 * 1000;
+		/** How long a failed check waits before the next attempt. */
+		const SOURCE_RETRY_MS = 5 * 60 * 1000;
 
 		const DICTIONARIES = {
 			zh: {
@@ -328,6 +332,12 @@ window.__ModuleLoader__.load({
 			});
 		}
 
+		/** Endpoint the host serves for a preset, or null on a host without it. */
+		function sourceEndpoint() {
+			const boot = globalThis.__DSH_THEME_MANAGER__;
+			return boot && typeof boot.sourceEndpoint === "string" && boot.sourceEndpoint !== "" ? boot.sourceEndpoint : null;
+		}
+
 		function hostSource(source) {
 			const boot = globalThis.__DSH_THEME_MANAGER__;
 			if (!boot || !boot.sources) return null;
@@ -335,18 +345,99 @@ window.__ModuleLoader__.load({
 			return typeof url === "string" && url !== "" ? url : null;
 		}
 
-		function pickSource(source) {
-			if (source !== "bing" && source !== "wallhaven") return Promise.resolve();
-			const url = hostSource(source);
-			if (url === null) return Promise.reject(new Error("not-ready"));
-			setBackground(url, state.background.scrim, source);
-			return Promise.resolve();
+		/**
+		 * Ask the host for one preset URL. The host owns the network call, the
+		 * day boundary and the cache; `force` skips the cache for a click.
+		 */
+		function requestSource(source, force) {
+			const endpoint = sourceEndpoint();
+			if (endpoint === null || typeof fetch !== "function") return Promise.resolve(null);
+			const target = new URL(endpoint, location.href);
+			target.searchParams.set("kind", source);
+			if (force) target.searchParams.set("force", "1");
+			return fetch(target.href, { cache: "no-store", credentials: "same-origin" }).then((response) => {
+				if (!response.ok) throw new Error("source request failed: " + response.status);
+				return response.json();
+			}).then((body) => {
+				if (!body || typeof body.url !== "string" || body.url === "") throw new Error("source request returned no url");
+				const boot = globalThis.__DSH_THEME_MANAGER__;
+				if (boot && boot.sources) boot.sources[source] = body.url;
+				return body;
+			});
 		}
 
+		/**
+		 * Click handler. It always asks the host for a fresh picture, so pressing
+		 * the same preset twice changes the background instead of doing nothing,
+		 * and the random preset comes back with a different wallpaper.
+		 */
+		function pickSource(source) {
+			if (source !== "bing" && source !== "wallhaven") return Promise.resolve();
+			const fallback = hostSource(source);
+			const adopt = (body) => {
+				const url = body !== null && typeof body.url === "string" && body.url !== "" ? body.url : fallback;
+				if (url === null) throw new Error("not-ready");
+				setBackground(url, state.background.scrim, source);
+			};
+			return requestSource(source, true).then(adopt, (reason) => {
+				if (fallback === null) throw reason;
+				adopt(null);
+			});
+		}
+
+		/** Boot value first, then the endpoint in case the page outlived the picture. */
 		function refreshSource() {
 			if (state.background.source === null) return;
 			const url = hostSource(state.background.source);
 			if (url !== null) setBackground(url, state.background.scrim, state.background.source);
+		}
+
+		/** Timestamp of the last successful-or-attempted check. */
+		let sourceCheckAt = 0;
+		/** Disposer of the running watcher, if any. */
+		let sourceWatch = null;
+
+		/**
+		 * Re-check the active preset. Only the daily preset moves on its own: a
+		 * random wallpaper stays until the next click, and the host answers a
+		 * non-forced request with the cached URL for it.
+		 */
+		function ensureSourceFresh() {
+			const source = state.background.source;
+			if (source === null) return Promise.resolve(false);
+			sourceCheckAt = Date.now();
+			return requestSource(source, false).then((body) => {
+				if (body === null || body.url === state.background.url) return false;
+				setBackground(body.url, state.background.scrim, source);
+				return true;
+			}, () => {
+				sourceCheckAt = Date.now() - SOURCE_CHECK_MS + SOURCE_RETRY_MS;
+				return false;
+			});
+		}
+
+		/**
+		 * Check once an hour, and again when a hidden page becomes visible: a
+		 * laptop that slept through midnight picks up today's picture without a
+		 * reload and without a restart.
+		 */
+		function startSourceWatch() {
+			if (typeof window === "undefined") return () => {};
+			if (sourceWatch !== null) sourceWatch();
+			const tick = () => {
+				if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+				if (Date.now() - sourceCheckAt < SOURCE_CHECK_MS) return;
+				void ensureSourceFresh();
+			};
+			const timer = setInterval(tick, SOURCE_CHECK_MS);
+			if (typeof document !== "undefined") document.addEventListener("visibilitychange", tick);
+			const stop = () => {
+				clearInterval(timer);
+				if (typeof document !== "undefined") document.removeEventListener("visibilitychange", tick);
+				if (sourceWatch === stop) sourceWatch = null;
+			};
+			sourceWatch = stop;
+			return stop;
 		}
 		//#endregion
 
@@ -562,6 +653,9 @@ window.__ModuleLoader__.load({
 			paint();
 			applyPackFonts(state.active);
 			refreshSource();
+			/* The boot snapshot can be a day old; ask the host once, then hourly. */
+			void ensureSourceFresh();
+			ctx.effect(() => startSourceWatch(), "theme-manager: background source watch");
 			ctx.on("theme/change", () => {
 				applyBackground();
 				emit();

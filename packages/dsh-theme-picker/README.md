@@ -66,9 +66,11 @@ The same settings row can also lay an image under the interface:
 - **Dim** is a slider for the scrim over the image; pull it right when the image is too bright.
 - **Daily Bing** and **random wallpaper** are two preset sources.
 
+Presets are live. Clicking **Daily Bing** or **random wallpaper** asks the host for a picture again even when that preset is already active, and the random one hands back a different wallpaper on every click. Once the daily preset is active the page re-checks it once an hour — and whenever it comes back from the background — so the picture changes at midnight without a reload and without a restart. The random one stays put until you click again.
+
 Text surfaces — cards, inputs, menus — keep the theme colours and only the page background and the sidebar let the image through, so the message area is not washed out.
 
-Both presets are resolved **in the host process**: `cn.bing.com` and `wallhaven.cc` send no CORS headers, so fetching them from the browser ends in `Failed to fetch`. The host resolves the direct image URL while the module loads (top-level await) and writes it into the first-paint script; the client reads that URL and uses it as a CSS background, since loading an image is not subject to CORS. The result is cached in `~/.dsh/.dsh-theme-picker-sources.json`, and an offline start reuses the previous image.
+Both presets are resolved **in the host process**: `cn.bing.com` and `wallhaven.cc` send no CORS headers, so fetching them from the browser ends in `Failed to fetch`. The host resolves the direct image URL while the module loads (top-level await), writes it into the first-paint script, and answers `/plugins/theme-picker/source?kind=bing` for a page that is already open; the client reads that URL and uses it as a CSS background, since loading an image is not subject to CORS. The result is cached in `~/.dsh/.dsh-theme-picker-sources.json`, and an offline start reuses the previous image.
 
 ## Notes
 

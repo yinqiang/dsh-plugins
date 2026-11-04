@@ -21,6 +21,12 @@
  *
  * The CSS file owns its own scoping; the manager only concatenates and injects
  * it, and publishes the catalogue to the browser through the boot script.
+ *
+ * Background presets are resolved here rather than in the browser, because
+ * cn.bing.com and wallhaven.cc send no CORS headers. A resolved URL is cached
+ * with the local day it belongs to and served two ways: embedded in the
+ * first-paint script, and over `SOURCE_ENDPOINT` so a page that is already open
+ * can refresh itself without a reload.
  */
 import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
@@ -31,8 +37,14 @@ import { fileURLToPath } from 'node:url'
 export const STORAGE_KEY = 'dsh-theme:active'
 /** Body attribute every pack's stylesheet keys off. */
 export const ATTRIBUTE = 'data-dsh-theme'
+/** Route a running page calls to refresh a preset without a reload. */
+export const SOURCE_ENDPOINT = '/plugins/theme-picker/source'
 /** How long a scan result stays valid, in milliseconds. */
 const CACHE_MS = 2000
+/** How long a resolved preset stays usable before it is fetched again. */
+const SOURCE_TTL_MS = 60 * 60 * 1000
+/** How long a failed fetch waits before the next attempt. */
+const SOURCE_RETRY_MS = 5 * 60 * 1000
 
 /** Directory of this module, used to locate the owning node_modules root. */
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -40,23 +52,55 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 /** Last resolved catalogue. */
 let cache = { root: null, at: 0, packs: [] }
 
-/** Resolved preset sources: image URLs fetched server-side to dodge CORS. */
-const SOURCES_FILE = join(homedir(), '.dsh', '.dsh-theme-picker-sources.json')
-const DEBUG_FILE = join(homedir(), '.dsh', '.dsh-theme-picker-debug.log')
+/** Harness home, honouring `DSH_HOME` the way the harness itself does. */
+const DSH_HOME = process.env.DSH_HOME !== undefined && process.env.DSH_HOME.trim() !== ''
+  ? process.env.DSH_HOME.trim()
+  : join(homedir(), '.dsh')
 
-let sourceCache = { bing: null, bingAt: 0, wallhaven: null }
+/** Preset cache, so a restart paints something before the network answers. */
+const SOURCES_FILE = join(DSH_HOME, '.dsh-theme-picker-sources.json')
+/** Diagnostics for the two preset sources. */
+const DEBUG_FILE = join(DSH_HOME, '.dsh-theme-picker-debug.log')
 
-try {
-  const saved = JSON.parse(readFileSync(SOURCES_FILE, 'utf8'))
-  if (saved && typeof saved.bing === 'string' && saved.bing !== '') sourceCache.bing = saved.bing
-  if (saved && typeof saved.wallhaven === 'string' && saved.wallhaven !== '') sourceCache.wallhaven = saved.wallhaven
-} catch (error) {
-  /* first launch: nothing cached yet, the fetch below fills it */
+/**
+ * Resolved presets. `bing.day` is the local calendar day its URL belongs to:
+ * Bing rotates the picture at local midnight, so a day mismatch is exactly
+ * "tomorrow shows a different picture".
+ */
+let sourceState = { bing: { url: null, at: 0, day: null }, wallhaven: { url: null, at: 0 } }
+/** At most one non-forced fetch per source; a click always starts its own. */
+const inFlight = { bing: null, wallhaven: null }
+
+/**
+ * Read the preset cache. The first version of this file wrote bare URL strings
+ * under the same keys, so both shapes are accepted.
+ */
+function loadSourceCache() {
+  let saved
+  try {
+    saved = JSON.parse(readFileSync(SOURCES_FILE, 'utf8'))
+  } catch (error) {
+    /* first launch: nothing cached yet, the boot fetch below fills it */
+    return
+  }
+  const bing = typeof saved?.bing === 'string' ? { url: saved.bing } : saved?.bing
+  if (bing !== undefined && typeof bing.url === 'string' && bing.url !== '') {
+    sourceState.bing = {
+      url: bing.url,
+      at: Number.isFinite(bing.at) ? bing.at : 0,
+      day: typeof bing.day === 'string' ? bing.day : null,
+    }
+  }
+  const wallhaven = typeof saved?.wallhaven === 'string' ? { url: saved.wallhaven } : saved?.wallhaven
+  if (wallhaven !== undefined && typeof wallhaven.url === 'string' && wallhaven.url !== '') {
+    sourceState.wallhaven = { url: wallhaven.url, at: Number.isFinite(wallhaven.at) ? wallhaven.at : 0 }
+  }
 }
 
+/** Persist the preset cache; a read-only home keeps it in memory only. */
 function saveSources() {
   try {
-    writeFileSync(SOURCES_FILE, JSON.stringify({ bing: sourceCache.bing, wallhaven: sourceCache.wallhaven }, null, 2))
+    writeFileSync(SOURCES_FILE, JSON.stringify({ bing: sourceState.bing, wallhaven: sourceState.wallhaven }, null, 2))
   } catch (error) {
     /* read-only home: the cache stays in memory */
   }
@@ -70,55 +114,159 @@ function debugLog(message) {
   }
 }
 
-async function fetchBing(quiet) {
-  try {
-    const response = await fetch('https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN')
-    const json = await response.json()
-    const image = json && json.images && json.images[0]
-    if (image && typeof image.url === 'string') {
-      sourceCache.bing = 'https://cn.bing.com' + image.url
-      sourceCache.bingAt = Date.now()
-      saveSources()
-      if (!quiet) debugLog('bing ok ' + sourceCache.bing)
-    } else if (!quiet) {
-      debugLog('bing no image in payload')
-    }
-  } catch (error) {
-    if (!quiet) debugLog('bing fail: ' + String(error && error.message ? error.message : error))
-  }
-}
-
-async function fetchWallhaven(quiet) {
-  try {
-    const response = await fetch('https://wallhaven.cc/api/v1/search?sorting=random&purity=100&atleast=1920x1080&categories=100')
-    const json = await response.json()
-    const item = json && json.data && json.data[0]
-    if (item && typeof item.path === 'string') {
-      sourceCache.wallhaven = item.path
-      saveSources()
-      if (!quiet) debugLog('wallhaven ok ' + sourceCache.wallhaven)
-    } else if (!quiet) {
-      debugLog('wallhaven no image in payload')
-    }
-  } catch (error) {
-    if (!quiet) debugLog('wallhaven fail: ' + String(error && error.message ? error.message : error))
-  }
+/**
+ * Local calendar day of one instant, as `YYYY-MM-DD`.
+ * @param now - instant to label; defaults to the current time.
+ * @returns the day in the machine's time zone.
+ */
+function localDay(now = new Date()) {
+  const pad = (value) => String(value).padStart(2, '0')
+  return String(now.getFullYear()) + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())
 }
 
 /**
- * Resolve the presets before the first page is served, so the boot script always
- * carries real URLs. Top-level await finishes at import time, which the loader
- * completes before apply() and before the web server answers a request. Capped
- * so a dead network cannot hold up startup.
+ * Whether the cached Bing picture is from another day, too old, or missing.
+ * @param now - current epoch milliseconds.
+ * @returns true when the picture has to be fetched again.
+ */
+function bingIsStale(now = Date.now()) {
+  const entry = sourceState.bing
+  if (entry.url === null) return true
+  if (entry.day !== localDay()) return true
+  return now - entry.at >= SOURCE_TTL_MS
+}
+
+/**
+ * Fetch one JSON document, bypassing every cache on the way.
+ * @param url - absolute URL.
+ * @returns the parsed body.
+ * @throws when the response is not a success or does not hold JSON.
+ */
+async function requestJson(url) {
+  const response = await fetch(url, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } })
+  if (!response.ok) throw new Error('HTTP ' + String(response.status))
+  return response.json()
+}
+
+/** Fetch today's Bing picture and remember the local day it belongs to. */
+async function fetchBingSource() {
+  const endpoint = 'https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN&_=' + String(Date.now())
+  const payload = await requestJson(endpoint)
+  const image = payload?.images?.[0]
+  if (image === undefined || typeof image.url !== 'string' || image.url === '') throw new Error('payload has no image')
+  const url = image.url.startsWith('http') ? image.url : 'https://cn.bing.com' + image.url
+  sourceState.bing = { url, at: Date.now(), day: localDay() }
+  saveSources()
+  debugLog('bing ok ' + url)
+  return url
+}
+
+/**
+ * Fetch a random wallpaper. A fresh seed plus a cache-buster is what makes two
+ * consecutive calls return two different pictures; the previous URL is
+ * rejected outright, so a click always changes the background.
+ */
+async function fetchWallhavenSource() {
+  const previous = sourceState.wallhaven.url
+  let chosen = previous
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const seed = Math.random().toString(36).slice(2, 10)
+    const endpoint = 'https://wallhaven.cc/api/v1/search?sorting=random&purity=100&atleast=1920x1080&categories=100&seed=' + seed + '&_=' + String(Date.now())
+    const payload = await requestJson(endpoint)
+    const item = payload?.data?.[0]
+    if (item === undefined || typeof item.path !== 'string' || item.path === '') throw new Error('payload has no wallpaper')
+    chosen = item.path
+    if (item.path !== previous) break
+  }
+  sourceState.wallhaven = { url: chosen, at: Date.now() }
+  saveSources()
+  debugLog('wallhaven ok ' + chosen)
+  return chosen
+}
+
+/**
+ * Current URL of one preset, fetching when it is missing or out of date.
+ * @param kind - `bing` or `wallhaven`.
+ * @param force - fetch even when the cached value is still fresh; a click passes true.
+ * @returns the resolved image URL.
+ */
+async function resolveSource(kind, force) {
+  if (kind === 'bing' && force !== true && !bingIsStale()) return sourceState.bing.url
+  if (kind === 'wallhaven' && force !== true && sourceState.wallhaven.url !== null) return sourceState.wallhaven.url
+  if (force !== true && inFlight[kind] !== null) return inFlight[kind]
+  const run = (kind === 'bing' ? fetchBingSource() : fetchWallhavenSource()).catch((error) => {
+    debugLog(kind + ' fail: ' + String(error?.message ?? error))
+    throw error
+  }).finally(() => {
+    if (inFlight[kind] === run) inFlight[kind] = null
+  })
+  if (force !== true) inFlight[kind] = run
+  return run
+}
+
+/**
+ * Answer one preset request as JSON. Deliberately uncached: the page polls this
+ * to pick up a picture that changed while it stayed open.
+ * @param res - response owning the body.
+ * @param status - HTTP status.
+ * @param body - JSON-serializable payload.
+ */
+function sendJson(res, status, body) {
+  const text = JSON.stringify(body)
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store, max-age=0',
+    'content-length': String(Buffer.byteLength(text)),
+  })
+  res.end(text)
+}
+
+/**
+ * Serve `GET /plugins/theme-picker/source?kind=<bing|wallhaven>&force=1`.
+ * @param req - incoming request.
+ * @param res - response owning the body.
+ */
+async function handleSourceRequest(req, res) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { allow: 'GET, HEAD' })
+    res.end()
+    return
+  }
+  const asked = new URL(req.url ?? SOURCE_ENDPOINT, 'http://localhost')
+  const kind = asked.searchParams.get('kind') === 'wallhaven' ? 'wallhaven' : 'bing'
+  const force = asked.searchParams.get('force') === '1'
+  try {
+    const url = await resolveSource(kind, force)
+    if (req.method === 'HEAD') {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store, max-age=0' })
+      res.end()
+      return
+    }
+    const body = kind === 'bing'
+      ? { kind, url, day: sourceState.bing.day, at: sourceState.bing.at }
+      : { kind, url, at: sourceState.wallhaven.at }
+    sendJson(res, 200, body)
+  } catch (error) {
+    sendJson(res, 502, { kind, error: String(error?.message ?? error) })
+  }
+}
+
+loadSourceCache()
+
+/**
+ * Resolve the presets before the first page is served, so the boot script
+ * carries real URLs. Top-level await finishes at import time, before apply()
+ * and before the web server answers a request. Capped so a dead network cannot
+ * hold up startup.
  */
 try {
   await Promise.race([
-    Promise.all([fetchBing(), fetchWallhaven()]),
+    Promise.all([resolveSource('bing', false), resolveSource('wallhaven', false)]),
     new Promise((done) => setTimeout(done, 3000)),
   ])
-  debugLog('resolved at load: bing=' + sourceCache.bing + ' wallhaven=' + sourceCache.wallhaven)
+  debugLog('resolved at load: bing=' + sourceState.bing.url + ' wallhaven=' + sourceState.wallhaven.url)
 } catch (error) {
-  debugLog('resolve at load threw: ' + String(error && error.message ? error.message : error))
+  debugLog('resolve at load threw: ' + String(error?.message ?? error))
 }
 
 /**
@@ -136,6 +284,20 @@ function findModulesRoot() {
     dir = parent
   }
   return null
+}
+
+/** Keep only the font roles a pack actually declares.
+ * @param fonts - the pack's `dsh.theme.fonts` object.
+ * @returns a role -> family-list map, possibly empty.
+ */
+function readFonts(fonts) {
+  const out = {}
+  if (!fonts || typeof fonts !== 'object') return out
+  for (const role of ['text', 'code', 'terminal']) {
+    const value = fonts[role]
+    if (typeof value === 'string' && value.trim() !== '') out[role] = value.trim()
+  }
+  return out
 }
 
 /**
@@ -156,20 +318,6 @@ function readPack(pkgDir, manifest) {
   } catch {
     return null
   }
-/** Keep only the font roles a pack actually declares.
- * @param fonts - the pack's `dsh.theme.fonts` object.
- * @returns a role -> family-list map, possibly empty.
- */
-function readFonts(fonts) {
-  const out = {}
-  if (!fonts || typeof fonts !== 'object') return out
-  for (const role of ['text', 'code', 'terminal']) {
-    const value = fonts[role]
-    if (typeof value === 'string' && value.trim() !== '') out[role] = value.trim()
-  }
-  return out
-}
-
   return {
     id: theme.id,
     name: typeof theme.name === 'string' && theme.name !== '' ? theme.name : theme.id,
@@ -302,8 +450,14 @@ function bootScript(packs) {
     if (THEMES[index].id === active) known = true;
   }
   if (!known) active = null;
-  var SOURCES = ${JSON.stringify({ bing: sourceCache.bing, wallhaven: sourceCache.wallhaven })};
-  globalThis.__DSH_THEME_MANAGER__ = { themes: THEMES, active: active, sources: SOURCES };
+  var SOURCES = ${JSON.stringify({ bing: sourceState.bing.url, wallhaven: sourceState.wallhaven.url })};
+  globalThis.__DSH_THEME_MANAGER__ = {
+    themes: THEMES,
+    active: active,
+    sources: SOURCES,
+    sourceEndpoint: ${JSON.stringify(SOURCE_ENDPOINT)},
+    sourcesAt: ${JSON.stringify(Date.now())}
+  };
   var body = document.body;
   if (!body) return;
   if (active === null) body.removeAttribute(ATTR);
@@ -314,15 +468,26 @@ function bootScript(packs) {
 export const name = 'theme-manager'
 
 /**
- * Inject every pack plus the boot script on each page render.
+ * Register the browser half, the pre-paint hook, and the preset endpoint.
  *
  * @param ctx - plugin context.
  * @param config - optional inline packs.
  */
 export function apply(ctx, config) {
+  ctx.inject(['webServer'], (web) => {
+    web.effect(() => web.webServer.register({
+      kind: 'exact',
+      path: SOURCE_ENDPOINT,
+      handler: (req, res) => {
+        void handleSourceRequest(req, res)
+      },
+    }), 'theme-manager: background source endpoint')
+  })
+
   ctx.on('webserver/index-inject', (table) => {
-    fetchWallhaven(true)
-    if (Date.now() - sourceCache.bingAt > 3600000) fetchBing(true)
+    /* Keep tomorrow's picture warm so the next render embeds a current URL.
+       A page that stays open does not depend on this: it polls the endpoint. */
+    void resolveSource('bing', false).catch(() => {})
     const packs = loadPacks(config)
     for (const pack of packs) table.push({ kind: 'style', text: pack.css })
     table.push({ kind: 'script', placement: 'body', text: bootScript(packs) })
