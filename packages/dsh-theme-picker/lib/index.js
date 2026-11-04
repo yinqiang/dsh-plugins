@@ -28,7 +28,7 @@
  * first-paint script, and over `SOURCE_ENDPOINT` so a page that is already open
  * can refresh itself without a reload.
  */
-import { appendFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -49,8 +49,8 @@ const SOURCE_RETRY_MS = 5 * 60 * 1000
 /** Directory of this module, used to locate the owning node_modules root. */
 const HERE = dirname(fileURLToPath(import.meta.url))
 
-/** Last resolved catalogue. */
-let cache = { root: null, at: 0, packs: [] }
+/** Last resolved catalogue, keyed by the roots it was read from. */
+let cache = { key: null, at: 0, packs: [] }
 
 /** Harness home, honouring `DSH_HOME` the way the harness itself does. */
 const DSH_HOME = process.env.DSH_HOME !== undefined && process.env.DSH_HOME.trim() !== ''
@@ -391,20 +391,92 @@ function scan(modulesRoot) {
 }
 
 /**
+ * The running profile's node_modules, read from the loader's base URL.
+ *
+ * A linked plugin lives outside any node_modules, so walking up from this
+ * module finds nothing; the loader still knows which profile it booted.
+ *
+ * @param ctx - plugin context.
+ * @returns absolute node_modules path, or null when the base URL is not a file URL.
+ */
+function profileModulesRoot(ctx) {
+  const base = ctx?.baseUrl
+  if (typeof base !== 'string' || base === '') return null
+  try {
+    return join(fileURLToPath(base), 'node_modules')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Every node_modules root a theme pack can live in, most specific first.
+ *
+ * The plugin itself may be a copy under node_modules (walk up from the module),
+ * a link into a checkout — where the real path has no node_modules above it —
+ * or a package the loader resolved for the running profile. The harness home
+ * covers the rest: the shared store beside the profiles, then each profile's
+ * own modules.
+ *
+ * @param profileRoot - node_modules of the running profile, when known.
+ * @returns existing roots, without duplicates.
+ */
+function moduleRoots(profileRoot) {
+  const roots = []
+  const add = (dir) => {
+    if (dir === null || roots.includes(dir)) return
+    try {
+      if (!existsSync(dir)) return
+    } catch {
+      return
+    }
+    roots.push(dir)
+  }
+  add(profileRoot)
+  add(findModulesRoot())
+  const profiles = join(DSH_HOME, 'profiles')
+  add(join(profiles, 'node_modules'))
+  let entries = []
+  try {
+    entries = readdirSync(profiles, { withFileTypes: true })
+  } catch {
+    entries = []
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+    add(join(profiles, entry.name, 'node_modules'))
+  }
+  return roots
+}
+
+/**
  * Current catalogue, rescanned at most every CACHE_MS so a freshly dropped pack
  * shows up on the next page load without a host restart.
  *
- * @returns installed theme packs.
+ * @param config - plugin config carrying optional inline packs.
+ * @param profileRoot - node_modules of the running profile, when known.
+ * @returns installed theme packs, ordered by display name.
  */
-function loadPacks(config) {
-  const modulesRoot = findModulesRoot()
+function loadPacks(config, profileRoot) {
+  const roots = moduleRoots(profileRoot)
+  const key = roots.join('|')
   const now = Date.now()
-  if (modulesRoot !== null && cache.root === modulesRoot && now - cache.at < CACHE_MS) return cache.packs
-  const packs = modulesRoot === null ? [] : scan(modulesRoot)
+  if (cache.key === key && now - cache.at < CACHE_MS) return cache.packs
+  const packs = []
+  const seen = new Set()
+  for (const root of roots) {
+    for (const pack of scan(root)) {
+      if (seen.has(pack.id)) continue
+      seen.add(pack.id)
+      packs.push(pack)
+    }
+  }
   const extra = config && Array.isArray(config.inline) ? config.inline : []
   for (const entry of extra) {
     if (!entry || typeof entry.id !== 'string' || typeof entry.css !== 'string') continue
-    if (packs.some((pack) => pack.id === entry.id)) continue
+    if (seen.has(entry.id)) continue
+    seen.add(entry.id)
     packs.push({
       id: entry.id,
       name: typeof entry.name === 'string' ? entry.name : entry.id,
@@ -414,7 +486,8 @@ function loadPacks(config) {
       css: entry.css,
     })
   }
-  if (modulesRoot !== null) cache = { root: modulesRoot, at: now, packs }
+  packs.sort((left, right) => left.name.localeCompare(right.name))
+  cache = { key, at: now, packs }
   return packs
 }
 
@@ -474,6 +547,8 @@ export const name = 'theme-manager'
  * @param config - optional inline packs.
  */
 export function apply(ctx, config) {
+  const profileRoot = profileModulesRoot(ctx)
+
   ctx.inject(['webServer'], (web) => {
     web.effect(() => web.webServer.register({
       kind: 'exact',
@@ -488,7 +563,7 @@ export function apply(ctx, config) {
     /* Keep tomorrow's picture warm so the next render embeds a current URL.
        A page that stays open does not depend on this: it polls the endpoint. */
     void resolveSource('bing', false).catch(() => {})
-    const packs = loadPacks(config)
+    const packs = loadPacks(config, profileRoot)
     for (const pack of packs) table.push({ kind: 'style', text: pack.css })
     table.push({ kind: 'script', placement: 'body', text: bootScript(packs) })
   })
