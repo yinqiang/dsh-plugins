@@ -950,24 +950,34 @@ window.__ModuleLoader__.load({
 
 			const Badge = createBadge(ctx);
 			ctx.effect(function () {
-				return ctx.slots.inject(HEADER_SLOT, function () {
-					return ctx.slots.register({
-						name: HEADER_SLOT,
-						id: "next-festival",
-						order: 1
-					}, Badge);
-				});
+				try {
+					return ctx.slots.inject(HEADER_SLOT, function () {
+						return ctx.slots.register({
+							name: HEADER_SLOT,
+							id: "next-festival",
+							order: 1
+						}, Badge);
+					});
+				} catch (error) {
+					console.warn(PLUGIN_ID + ": header badge registration failed", error);
+					return function () {};
+				}
 			}, PLUGIN_ID + ": header badge");
 
 			const Settings = createSettings(ctx);
 			ctx.effect(function () {
-				return ctx.slots.inject(CONFIG_SLOT, function () {
-					return ctx.slots.register({
-						name: CONFIG_SLOT,
-						key: PLUGIN_ID,
-						locale: NS
-					}, Settings);
-				});
+				try {
+					return ctx.slots.inject(CONFIG_SLOT, function () {
+						return ctx.slots.register({
+							name: CONFIG_SLOT,
+							key: PLUGIN_ID,
+							locale: NS
+						}, Settings);
+					});
+				} catch (error) {
+					console.warn(PLUGIN_ID + ": plugin-page region picker registration failed", error);
+					return function () {};
+				}
 			}, PLUGIN_ID + ": plugin-page region picker");
 		}
 		//#endregion
