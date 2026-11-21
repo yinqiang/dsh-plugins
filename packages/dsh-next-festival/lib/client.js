@@ -37,8 +37,15 @@ window.__ModuleLoader__.load({
 		const LEGACY_KEY = "dsh-next-festival:region";
 		const REGIONS_KEY = "dsh-next-festival:regions";
 		const POSITION_KEY = "dsh-next-festival:position";
-		const POSITIONS = ["top-left", "top-right", "bottom-left", "bottom-right"];
-		const DEFAULT_POSITION = "bottom-right";
+		const EDGES = ["left", "right", "top", "bottom"];
+		const DEFAULT_POSITION = { xRatio: 1, yRatio: 1, edge: "bottom" };
+		const MARGIN = 18;
+		const LEGACY_CORNERS = {
+			"top-left": { xRatio: 0, yRatio: 0, edge: "left" },
+			"top-right": { xRatio: 1, yRatio: 0, edge: "right" },
+			"bottom-left": { xRatio: 0, yRatio: 1, edge: "left" },
+			"bottom-right": { xRatio: 1, yRatio: 1, edge: "right" }
+		};
 		const STYLE_ID = PLUGIN_ID + "/style.css";
 		const OVERLAY_SLOT = "shell.overlay";
 		const CONFIG_SLOT = "plugins.bundle.config";
@@ -542,6 +549,49 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 
+		//#region badge geometry
+		function clamp(value, min, max) { return Math.min(Math.max(value, min), Math.max(min, max)); }
+		/** Restore a saved ratio + edge to viewport pixels. */
+		function pixelsFromRatio(position, width, height, viewW, viewH) {
+			const maxLeft = Math.max(MARGIN, viewW - width - MARGIN);
+			const maxTop = Math.max(MARGIN, viewH - height - MARGIN);
+			let left = MARGIN + clamp(position.xRatio, 0, 1) * (maxLeft - MARGIN);
+			let top = MARGIN + clamp(position.yRatio, 0, 1) * (maxTop - MARGIN);
+			if (position.edge === "left") left = MARGIN;
+			else if (position.edge === "right") left = maxLeft;
+			else if (position.edge === "top") top = MARGIN;
+			else if (position.edge === "bottom") top = maxTop;
+			return { left: clamp(left, MARGIN, maxLeft), top: clamp(top, MARGIN, maxTop) };
+		}
+		/** Snap a dragged position to the nearest edge, keeping the other axis free. */
+		function snapPosition(left, top, width, height, viewW, viewH) {
+			const maxLeft = Math.max(MARGIN, viewW - width - MARGIN);
+			const maxTop = Math.max(MARGIN, viewH - height - MARGIN);
+			left = clamp(left, MARGIN, maxLeft);
+			top = clamp(top, MARGIN, maxTop);
+			const distances = [
+				{ edge: "left", d: left - MARGIN },
+				{ edge: "right", d: maxLeft - left },
+				{ edge: "top", d: top - MARGIN },
+				{ edge: "bottom", d: maxTop - top }
+			];
+			distances.sort(function (a, b) { return a.d - b.d; });
+			const edge = distances[0].edge;
+			if (edge === "left") left = MARGIN;
+			else if (edge === "right") left = maxLeft;
+			else if (edge === "top") top = MARGIN;
+			else top = maxTop;
+			return {
+				left: left, top: top,
+				position: {
+					xRatio: maxLeft > MARGIN ? (left - MARGIN) / (maxLeft - MARGIN) : 0,
+					yRatio: maxTop > MARGIN ? (top - MARGIN) / (maxTop - MARGIN) : 0,
+					edge: edge
+				}
+			};
+		}
+		//#endregion
+
 		//#region copy
 		const COPY = {
 			zh: {
@@ -549,11 +599,9 @@ window.__ModuleLoader__.load({
 				region: "节日地区",
 				regionDesc: "可多选国家或地区；徽标显示所有选中地区里最近的一个节日，并标出它属于哪个地区。保存后立即更新。",
 				position: "显示位置",
-				positionDesc: "选择徽标出现在窗口的哪个角落。",
-				posTopLeft: "左上",
-				posTopRight: "右上",
-				posBottomLeft: "左下",
-				posBottomRight: "右下",
+				positionDesc: "直接拖动徽标摆放，松手会自动贴到最近的边；也可以聚焦徽标后用方向键微调。",
+				resetPosition: "恢复默认位置",
+				dragHint: "拖动可摆放位置",
 				selected: "已选",
 				atLeastOne: "至少要保留一个地区。",
 				groupCn: "中国大陆与港澳台",
@@ -591,11 +639,9 @@ window.__ModuleLoader__.load({
 				region: "Festival region",
 				regionDesc: "Pick several countries or regions; the badge shows the soonest festival across them and names its region. Saving applies immediately.",
 				position: "Badge position",
-				positionDesc: "Choose which corner of the window the badge sits in.",
-				posTopLeft: "Top left",
-				posTopRight: "Top right",
-				posBottomLeft: "Bottom left",
-				posBottomRight: "Bottom right",
+				positionDesc: "Drag the badge anywhere; it snaps to the nearest edge when released. Arrow keys also nudge it while focused.",
+				resetPosition: "Reset position",
+				dragHint: "Drag to reposition",
 				selected: "Selected",
 				atLeastOne: "Keep at least one region.",
 				groupCn: "Mainland China, Hong Kong, Macau and Taiwan",
@@ -694,13 +740,26 @@ window.__ModuleLoader__.load({
 			} catch (error) {}
 			return DEFAULT_REGIONS.slice();
 		}
+		function positionSignature(position) {
+			return position.edge + ":" + Number(position.xRatio).toFixed(4) + ":" + Number(position.yRatio).toFixed(4);
+		}
 		function readPosition() {
 			try {
-				const value = localStorage.getItem(POSITION_KEY);
-				return POSITIONS.indexOf(value) === -1 ? DEFAULT_POSITION : value;
-			} catch (error) {
-				return DEFAULT_POSITION;
-			}
+				const raw = localStorage.getItem(POSITION_KEY);
+				if (raw !== null && raw.trim().charAt(0) === "{") {
+					const parsed = JSON.parse(raw);
+					if (parsed && EDGES.indexOf(parsed.edge) !== -1 &&
+						Number.isFinite(parsed.xRatio) && Number.isFinite(parsed.yRatio)) {
+						return {
+							xRatio: clamp(parsed.xRatio, 0, 1),
+							yRatio: clamp(parsed.yRatio, 0, 1),
+							edge: parsed.edge
+						};
+					}
+				}
+				if (raw !== null && LEGACY_CORNERS[raw]) return Object.assign({}, LEGACY_CORNERS[raw]);
+			} catch (error) {}
+			return Object.assign({}, DEFAULT_POSITION);
 		}
 		function storageWritable() {
 			try {
@@ -739,25 +798,32 @@ window.__ModuleLoader__.load({
 			return function () { listeners.delete(listener); };
 		}
 		function getSnapshot() { return snapshot; }
-		function setPreference(regions, position) {
+		function setRegions(regions) {
 			const clean = cleanRegions(regions);
-			if (clean.length === 0) return;
-			const pos = POSITIONS.indexOf(position) === -1 ? DEFAULT_POSITION : position;
-			if (sameRegions(clean, state.regions) && pos === state.position) return;
+			if (clean.length === 0 || sameRegions(clean, state.regions)) return;
 			state.regions = clean;
-			state.position = pos;
-			try {
-				localStorage.setItem(REGIONS_KEY, JSON.stringify(clean));
-				localStorage.setItem(POSITION_KEY, pos);
-			} catch (error) {
-				state.persistent = false;
-			}
+			try { localStorage.setItem(REGIONS_KEY, JSON.stringify(clean)); }
+			catch (error) { state.persistent = false; }
+			emit();
+		}
+		function setPosition(position) {
+			if (!position || EDGES.indexOf(position.edge) === -1) return;
+			const next = {
+				xRatio: clamp(position.xRatio, 0, 1),
+				yRatio: clamp(position.yRatio, 0, 1),
+				edge: position.edge
+			};
+			if (positionSignature(next) === positionSignature(state.position)) return;
+			state.position = next;
+			try { localStorage.setItem(POSITION_KEY, JSON.stringify(next)); }
+			catch (error) { state.persistent = false; }
 			emit();
 		}
 		function reloadPreference() {
 			const regions = readRegions();
 			const position = readPosition();
-			if (sameRegions(regions, state.regions) && position === state.position) return;
+			if (sameRegions(regions, state.regions) &&
+				positionSignature(position) === positionSignature(state.position)) return;
 			state.regions = regions;
 			state.position = position;
 			state.externalAt = Date.now();
@@ -767,7 +833,7 @@ window.__ModuleLoader__.load({
 
 		//#region styles
 		const css = [
-			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;position:fixed;z-index:1000;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:0;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 78%,transparent);box-shadow:0 2px 14px color-mix(in oklab,var(--dsw-alias-label-primary,#111) 14%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;pointer-events:auto;-webkit-user-select:none;user-select:none}",
+			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;position:fixed;z-index:1000;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:0;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 78%,transparent);box-shadow:0 2px 14px color-mix(in oklab,var(--dsw-alias-label-primary,#111) 14%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;pointer-events:auto;touch-action:none;cursor:grab;-webkit-user-select:none;user-select:none}",
 			".dsh-nf-ink{flex:none;width:3px;height:26px;border-radius:99px;background:var(--dsh-nf-accent);box-shadow:0 0 9px color-mix(in oklab,var(--dsh-nf-accent) 55%,transparent)}",
 			".dsh-nf-body{display:flex;flex-direction:column;gap:3px;min-width:0}",
 			".dsh-nf-top{display:flex;align-items:baseline;gap:10px;justify-content:space-between}",
@@ -777,10 +843,7 @@ window.__ModuleLoader__.load({
 			".dsh-nf-days{font-weight:700;color:var(--dsh-nf-accent)}",
 			".dsh-nf-today{font-weight:600;color:var(--dsh-nf-accent)}",
 			".dsh-nf-region{font-size:10px;color:var(--dsw-alias-label-tertiary,#8a8a92);white-space:nowrap}",
-			"[data-dsh-next-festival].dsh-nf[data-position=top-left]{left:18px;top:18px}",
-			"[data-dsh-next-festival].dsh-nf[data-position=top-right]{right:18px;top:18px}",
-			"[data-dsh-next-festival].dsh-nf[data-position=bottom-left]{left:18px;bottom:18px}",
-			"[data-dsh-next-festival].dsh-nf[data-position=bottom-right]{right:18px;bottom:18px}",
+			"[data-dsh-next-festival].dsh-nf[data-dragging=true]{cursor:grabbing;box-shadow:0 4px 22px color-mix(in oklab,var(--dsh-nf-accent) 28%,transparent)}",
 			"[data-dsh-next-festival].dsh-nf:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#4c6ef5));outline-offset:2px}",
 			"[data-dsh-next-festival].dsh-nf-row{display:flex;flex-direction:column;gap:12px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}",
 			".dsh-nf-head{display:flex;justify-content:space-between;align-items:baseline;gap:24px}",
@@ -822,7 +885,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region components
-		/** Build the floating badge bound to one plugin context. */
+		/** Build the draggable, edge-snapping floating badge. */
 		function createBadge(ctx) {
 			return function FestivalBadge() {
 				const [now, setNow] = React.useState(function () { return Date.now(); });
@@ -842,13 +905,89 @@ window.__ModuleLoader__.load({
 				const zh = locale.indexOf("zh") === 0;
 				const colon = zh ? "：" : ": ";
 				const paren = zh ? ["（", "）"] : [" (", ")"];
+				const nodeRef = React.useRef(null);
+				const posRef = React.useRef(null);
+				const [pos, setPosState] = React.useState(null);
+				const [dragging, setDragging] = React.useState(null);
+				function updatePos(next) { posRef.current = next; setPosState(next); }
+				function measure() {
+					const node = nodeRef.current;
+					if (!node) return;
+					const rect = node.getBoundingClientRect();
+					updatePos(pixelsFromRatio(current.position, rect.width, rect.height,
+						window.innerWidth, window.innerHeight));
+				}
+				React.useEffect(function () {
+					measure();
+					window.addEventListener("resize", measure);
+					return function () { window.removeEventListener("resize", measure); };
+				}, [current.position]);
+				const onPointerDown = function (event) {
+					if (event.pointerType === "mouse" && event.button !== 0) return;
+					const node = nodeRef.current;
+					if (!node) return;
+					const rect = node.getBoundingClientRect();
+					const base = posRef.current || pixelsFromRatio(current.position, rect.width, rect.height,
+						window.innerWidth, window.innerHeight);
+					try { event.currentTarget.setPointerCapture(event.pointerId); } catch (error) {}
+					setDragging({
+						id: event.pointerId, x: event.clientX, y: event.clientY,
+						left: base.left, top: base.top
+					});
+					updatePos({ left: base.left, top: base.top });
+				};
+				const onPointerMove = function (event) {
+					if (!dragging || dragging.id !== event.pointerId) return;
+					const node = nodeRef.current;
+					if (!node) return;
+					const rect = node.getBoundingClientRect();
+					updatePos({
+						left: clamp(dragging.left + event.clientX - dragging.x, MARGIN, window.innerWidth - rect.width - MARGIN),
+						top: clamp(dragging.top + event.clientY - dragging.y, MARGIN, window.innerHeight - rect.height - MARGIN)
+					});
+				};
+				const finishDrag = function (event) {
+					if (!dragging || dragging.id !== event.pointerId) return;
+					const node = nodeRef.current;
+					const rect = node ? node.getBoundingClientRect() : { width: 200, height: 46 };
+					const base = posRef.current || { left: MARGIN, top: MARGIN };
+					const snapped = snapPosition(base.left, base.top, rect.width, rect.height,
+						window.innerWidth, window.innerHeight);
+					updatePos({ left: snapped.left, top: snapped.top });
+					setPosition(snapped.position);
+					setDragging(null);
+				};
+				const onKeyDown = function (event) {
+					const deltas = { ArrowLeft: [-16, 0], ArrowRight: [16, 0], ArrowUp: [0, -16], ArrowDown: [0, 16] };
+					const delta = deltas[event.key];
+					if (!delta) return;
+					event.preventDefault();
+					const node = nodeRef.current;
+					if (!node) return;
+					const rect = node.getBoundingClientRect();
+					const base = posRef.current || pixelsFromRatio(current.position, rect.width, rect.height,
+						window.innerWidth, window.innerHeight);
+					const snapped = snapPosition(base.left + delta[0], base.top + delta[1], rect.width, rect.height,
+						window.innerWidth, window.innerHeight);
+					updatePos({ left: snapped.left, top: snapped.top });
+					setPosition(snapped.position);
+				};
+
 				const info = nextFestival(current.regions, now);
 				const entry = info.next;
+				const posStyle = pos
+					? { left: pos.left + "px", top: pos.top + "px", right: "auto", bottom: "auto" }
+					: { right: "18px", bottom: "18px" };
 				if (entry === null) {
 					return h("div", {
+						ref: nodeRef,
 						className: "dsh-nf", "data-dsh-next-festival": "badge",
-						"data-position": current.position,
-						style: { "--dsh-nf-accent": KIND_COLORS.traditional }
+						"data-dragging": dragging ? "true" : "false",
+						role: "group", tabIndex: 0,
+						style: Object.assign({ "--dsh-nf-accent": KIND_COLORS.traditional }, posStyle),
+						title: dragging ? undefined : copy.dragHint,
+						onPointerDown: onPointerDown, onPointerMove: onPointerMove,
+						onPointerUp: finishDrag, onPointerCancel: finishDrag, onKeyDown: onKeyDown
 					}, h("span", { className: "dsh-nf-next" }, copy.none));
 				}
 
@@ -874,7 +1013,8 @@ window.__ModuleLoader__.load({
 					copy.kind + colon + kindName(festival.kind, locale),
 					copy.date + colon + entry.date + (entry.approx ? paren[0] + copy.approx + paren[1] : ""),
 					info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days,
-					copy.localDay + colon + entry.localToday
+					copy.localDay + colon + entry.localToday,
+					copy.dragHint
 				];
 				if (info.regions.length > 1) title.push(copy.selected + colon + selectedNames);
 				if (entry.approx) title.push(copy.approxNote);
@@ -891,23 +1031,30 @@ window.__ModuleLoader__.load({
 					info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days,
 					copy.regionLabel + " " + regionName,
 					copy.kind + " " + kindName(festival.kind, locale),
-					copy.localDay + " " + entry.localToday
+					copy.localDay + " " + entry.localToday,
+					copy.dragHint
 				];
 				if (info.regions.length > 1) aria.push(copy.selected + " " + selectedNames);
 				if (entry.approx) aria.push(copy.approxNote);
 				if (info.upcoming.length > 1) aria.push(copy.after + " " + info.upcoming.slice(1).map(labelOf).join(", "));
 
 				return h("div", {
+					ref: nodeRef,
 					className: "dsh-nf",
 					"data-dsh-next-festival": "badge",
 					"data-kind": festival.kind,
 					"data-approx": entry.approx ? "true" : "false",
-					"data-position": current.position,
+					"data-dragging": dragging ? "true" : "false",
 					role: "group",
 					tabIndex: 0,
-					style: { "--dsh-nf-accent": accent },
-					title: title.join("\n"),
-					"aria-label": aria.join(". ")
+					style: Object.assign({ "--dsh-nf-accent": accent }, posStyle),
+					title: dragging ? undefined : title.join("\n"),
+					"aria-label": aria.join(". "),
+					onPointerDown: onPointerDown,
+					onPointerMove: onPointerMove,
+					onPointerUp: finishDrag,
+					onPointerCancel: finishDrag,
+					onKeyDown: onKeyDown
 				}, [
 					h("span", { className: "dsh-nf-ink", key: "ink", "aria-hidden": true }),
 					h("div", { className: "dsh-nf-body", key: "body" }, [
@@ -924,7 +1071,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 
-		/** Build the multi-region picker and position setting shown on this bundle's own Plugins page. */
+		/** Build the multi-region picker and position help shown on this bundle's own Plugins page. */
 		function createSettings(ctx) {
 			return function FestivalSettings(props) {
 				const current = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -932,23 +1079,20 @@ window.__ModuleLoader__.load({
 				const zh = locale.indexOf("zh") === 0;
 				const t = translator(props, locale);
 				const [draftRegions, setDraftRegions] = React.useState(current.regions.slice());
-				const [draftPosition, setDraftPosition] = React.useState(current.position);
 				const [notice, setNotice] = React.useState(null);
-				const dirty = !sameRegions(draftRegions, current.regions) || draftPosition !== current.position;
+				const dirty = !sameRegions(draftRegions, current.regions);
 				const dirtyRef = React.useRef(false);
 				dirtyRef.current = dirty;
-				const signature = current.regions.join(",") + "|" + current.position;
+				const signature = current.regions.join(",");
 				const signatureRef = React.useRef(signature);
 				const externalRef = React.useRef(current.externalAt);
 				React.useEffect(function () {
-					if (signatureRef.current !== signature) {
+					if (signatureRef.current !== signature ||
+						(externalRef.current !== current.externalAt && !dirtyRef.current)) {
 						signatureRef.current = signature;
-						if (!dirtyRef.current) {
-							setDraftRegions(current.regions.slice());
-							setDraftPosition(current.position);
-						}
+						if (!dirtyRef.current) setDraftRegions(current.regions.slice());
 					}
-				}, [signature]);
+				}, [signature, current.externalAt]);
 				React.useEffect(function () {
 					if (externalRef.current !== current.externalAt) {
 						externalRef.current = current.externalAt;
@@ -966,10 +1110,6 @@ window.__ModuleLoader__.load({
 					{ key: "cn", label: t("groupCn"), items: REGIONS.filter(function (r) { return r.group === "cn"; }) },
 					{ key: "other", label: t("groupOther"), items: REGIONS.filter(function (r) { return r.group === "other"; }) }
 				];
-				const positionKeys = {
-					"top-left": "posTopLeft", "top-right": "posTopRight",
-					"bottom-left": "posBottomLeft", "bottom-right": "posBottomRight"
-				};
 				const children = [
 					h("div", { className: "dsh-nf-head", key: "head" }, [
 						h("div", { className: "dsh-nf-text", key: "text" }, [
@@ -1001,16 +1141,14 @@ window.__ModuleLoader__.load({
 					})),
 					h("div", { className: "dsh-nf-group", key: "position" }, [
 						h("div", { className: "dsh-nf-label", key: "label" }, t("position") + " · " + t("positionDesc")),
-						h("div", { className: "dsh-nf-chips", key: "chips" }, POSITIONS.map(function (id) {
-							return h("button", {
-								key: id,
+						h("div", { className: "dsh-nf-chips", key: "chips" }, [
+							h("button", {
+								key: "reset",
 								type: "button",
 								className: "dsh-nf-chip",
-								"data-active": draftPosition === id ? "true" : "false",
-								"aria-pressed": draftPosition === id ? "true" : "false",
-								onClick: function () { setDraftPosition(id); }
-							}, t(positionKeys[id]));
-						}))
+								onClick: function () { setPosition(DEFAULT_POSITION); setNotice("saved"); }
+							}, t("resetPosition"))
+						])
 					])
 				];
 
@@ -1035,7 +1173,7 @@ window.__ModuleLoader__.load({
 						type: "button",
 						className: "dsh-nf-save",
 						disabled: !dirty,
-						onClick: function () { setPreference(draftRegions, draftPosition); setNotice("saved"); }
+						onClick: function () { setRegions(draftRegions); setNotice("saved"); }
 					}, t("save")),
 					h("span", {
 						className: "dsh-nf-note", key: "note",
@@ -1122,8 +1260,13 @@ window.__ModuleLoader__.load({
 			buildCalendarMap: buildCalendarMap,
 			expandYear: expandYear,
 			nextFestival: nextFestival,
-			POSITIONS: POSITIONS,
-			DEFAULT_POSITION: DEFAULT_POSITION
+			EDGES: EDGES,
+			DEFAULT_POSITION: DEFAULT_POSITION,
+			pixelsFromRatio: pixelsFromRatio,
+			snapPosition: snapPosition,
+			readPosition: readPosition,
+			setPosition: setPosition,
+			getSnapshot: getSnapshot
 		};
 		return module.exports;
 	}

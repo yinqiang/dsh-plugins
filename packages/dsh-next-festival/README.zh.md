@@ -11,7 +11,7 @@
 ┃ 还有 N 天
 ```
 
-- **位置**：注册成 `shell.overlay` 的独立 entry，渲染成小浮层；在插件页可选四个角落（左上、右上、左下、右下），默认右下。它不占用 `conversation.header.leading` —— 那是 `dsh-solar-term` 已占用的 **single 槽**，再注册会互相顶掉。两个插件完全独立、互不影响。
+- **位置**：注册成 `shell.overlay` 的独立 entry，渲染成可**随意拖动**的小浮层；松手吸附到最近的边（上／下／左／右），沿这条边可停在任意位置。位置按视口比例保存，刷新或改窗口尺寸都不会跑掉；聚焦徽标后可用方向键微调。默认右下角。它不占用 `conversation.header.leading` —— 那是 `dsh-solar-term` 已占用的 **single 槽**，再注册会互相顶掉。两个插件完全独立、互不影响。
 - 第一行是下一个节日和日期；左侧竖条按类别换色：法定红、传统金、民族青、宗教紫。
 - 第二行在倒计时前标出**这个节日属于哪个地区**；当天显示「就是今天」。近似日期的「约」标在日期旁，不标在倒计时旁。多选地区时，徽标仍只显示所有选中地区里最近的那一个节日。
 - 悬停或用键盘聚焦徽标，可以看到该节日所属地区、全部已选地区、类别、当地日历日、时区、之后的另外两个节日（各自标出地区），以及日期为估算时的说明；同样的信息也写在无障碍标签里。
@@ -25,7 +25,7 @@
 
 **侧栏「插件」→ 已安装 → 下一个节日 →「节日地区」**。也就是插件自己的详情页：选择器注册在 `plugins.bundle.config` 这个按包名索引的槽里，出现在插件描述与组件列表之间，而不是通用设置页。
 
-可勾选任意多个地区，并选一个显示位置（四个角落），然后按「保存」；至少要保留一个地区。所有选中地区的节日会合并后取最近的一个，所以徽标仍只显示一个节日，并标出它属于哪个地区。未保存时会显示提示，离开页面则丢弃改动；保存后用独立的状态行反馈并在几秒后消失。其它标签页改了设置会给出提示，不会静默覆盖你还没保存的选择。设置存在本浏览器的 `localStorage`：`dsh-next-festival:regions`（JSON 数组）和 `dsh-next-festival:position`；旧的单选键 `dsh-next-festival:region` 会作为初始选中项读取。它们不是 profile 配置，另一个浏览器可以各选各的。徽标与选择器即时联动，同源的其它标签页也会跟着变。默认中国大陆、右下角。
+可勾选任意多个地区后按「保存」；至少要保留一个地区。显示位置不在这个表单里：直接拖动徽标（或聚焦后用方向键微调），松手自动贴到最近的边；设置页有「恢复默认位置」按钮。所有选中地区的节日会合并后取最近的一个，所以徽标仍只显示一个节日，并标出它属于哪个地区。未保存时会显示提示，离开页面则丢弃改动；保存后用独立的状态行反馈并在几秒后消失。其它标签页改了设置会给出提示，不会静默覆盖你还没保存的选择。设置存在本浏览器的 `localStorage`：`dsh-next-festival:regions`（JSON 数组）和 `dsh-next-festival:position`（`{xRatio, yRatio, edge}`）；旧的单选地区键和旧的四角位置字符串会在首次读取时自动迁移。它们不是 profile 配置，另一个浏览器可以各选各的。徽标与选择器即时联动，同源的其它标签页也会跟着变。默认中国大陆、右下角。
 
 ## 日期怎么算
 
@@ -75,7 +75,7 @@ node scripts/install.mjs --profile desktop --apply
 | 节日清单、名称、规则 | `lib/client.js` 的 `FESTIVALS` |
 | 年份表节日的公布日期 | 同一张表里的 `years` |
 | 地区名称与时区 | `REGIONS` |
-| 位置选项与角落偏移 | `POSITIONS` 和 `css` 数组里的 `[data-position=...]` 规则 |
+| 边距、吸附与拖拽行为 | `lib/client.js` 里的 `MARGIN`、`snapPosition`、`pixelsFromRatio` |
 | 徽标尺寸、配色、类别颜色 | `css` 数组与 `KIND_COLORS` |
 | 设置区布局 | `css` 数组里的 `.dsh-nf-row` 等 |
 | 刷新频率 | 徽标组件里的 `setInterval(tick, 30000)` |
@@ -84,4 +84,4 @@ node scripts/install.mjs --profile desktop --apply
 
 ## 原理
 
-宿主半 `lib/index.js` 只留一个空 `apply`，存在的意义是让包成为 Loader 行，把 `dsh.client` 带进浏览器启动图。`lib/client.js` 注册两个槽：徽标用 `shell.overlay` 的独立 list entry，地区选择器进按包名索引的 `plugins.bundle.config`。它**不碰** `conversation.header.leading` —— 那是 `dsh-solar-term` 占用的 single 槽，两个插件不共用槽位。后一个槽只在插件页打开时由插件管理页面声明，`ctx.slots.inject` 会等它出现，不需要重启。
+徽标自己管理位置：`pointerdown/move/up` + `setPointerCapture`、`resize` 监听，吸附后写入共享 store 持久化。宿主半 `lib/index.js` 只留一个空 `apply`，存在的意义是让包成为 Loader 行，把 `dsh.client` 带进浏览器启动图。`lib/client.js` 注册两个槽：徽标用 `shell.overlay` 的独立 list entry，地区选择器进按包名索引的 `plugins.bundle.config`。它**不碰** `conversation.header.leading` —— 那是 `dsh-solar-term` 占用的 single 槽，两个插件不共用槽位。后一个槽只在插件页打开时由插件管理页面声明，`ctx.slots.inject` 会等它出现，不需要重启。

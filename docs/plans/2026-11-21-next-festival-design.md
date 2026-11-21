@@ -69,9 +69,9 @@ README.md / README.zh.md
 ## 多选与位置配置
 
 - 地区多选：chip 为 toggle，至少保留一个；徽标把所有选中地区今年＋明年的节日合并，按「还有几天」升序取唯一最近的一个，并标出该节日所属地区；hover 的后续节日也带地区名。
-- 位置配置：四角（`top-left` / `top-right` / `bottom-left` / `bottom-right`），默认 `bottom-right`；写入 `dsh-next-festival:position`，徽标用 `data-position` + 四条 CSS 规则切换 `top/left/right/bottom`。
-- 持久化：`dsh-next-festival:regions`（JSON 数组）＋ `dsh-next-festival:position`；兼容旧单选键 `dsh-next-festival:region` 作为初始选中项；非法值回退到 `['cn']` 与默认位置。
-- 草稿为「地区数组 + 位置」两项，未保存提示、保存反馈、跨标签页同步沿用既有逻辑；预览按草稿计算。
+- 位置配置：徽标用 `pointerdown/move/up` + `setPointerCapture` 自由拖动，松手时 `snapPosition` 比较到四条边的距离、吸附到最近边，另一轴位置保留并 clamp（边距 `MARGIN=18`）。聚焦后方向键每次微调 16px，同样吸附。位置存为 `{xRatio, yRatio, edge}` 视口比例，`pixelsFromRatio` 在挂载、位置变化和 `resize` 时换算回像素，窗口变小也不会跑出屏幕；旧四角字符串首次读取时迁移。
+- 持久化：`dsh-next-festival:regions`（JSON 数组）＋ `dsh-next-festival:position`（比例对象，由拖拽/键盘即时写入，不进草稿）；兼容旧单选键 `dsh-next-festival:region` 与旧四角位置字符串；非法值回退到 `['cn']` 与默认右下。
+- 草稿只有地区数组；位置改动即时保存。设置页的四角 chip 换成「拖动摆放」说明 + 「恢复默认位置」按钮；未保存提示、保存反馈、跨标签页同步沿用既有逻辑；预览按草稿计算。
 
 ## UI
 
