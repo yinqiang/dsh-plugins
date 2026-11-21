@@ -7,12 +7,12 @@
 ## 已确认的决定
 
 1. 8 个地区一次做齐；依赖藏历、傣历、印度历、月相观测的节日允许用官方年份表或历法估算，但必须在 UI 与 README 中标注「约 / 以官方公告为准」，不编造精确日期。
-2. 徽标挂在 `conversation.header.leading`，`order: 1`，排在 `dsh-solar-term`（`order: 0`）之后。
+2. 徽标注册为 `shell.overlay` 的独立 list entry，渲染成窗口右下角浮层；**不占用** `conversation.header.leading`（那是 `dsh-solar-term` 已占用的 single 槽，两个插件共用会互相顶掉）。两个插件显示完全独立、互不影响。
 3. 设置区放到**插件自己的详情页**：侧栏 `Plugins` → 已安装 → `dsh-next-festival` → 「节日地区」。不用 `settings.general.item`。
 
 ## 依据（已验证）
 
-- `dsh-solar-term`：`lib/client.js` 的 lazy-CJS 形状、`conversation.header.leading` 注册、`--dsw-alias-*` 主题 token、`data-dsh-*` 作用域样式；Host 半是空 `apply`。
+- `dsh-solar-term`：`lib/client.js` 的 lazy-CJS 形状、`--dsw-alias-*` 主题 token、`data-dsh-*` 作用域样式；Host 半是空 `apply`。它占用的 `conversation.header.leading` 是 single 槽，本插件不碰。
 - `dsh-theme-picker`：`ctx.locale.register(NS, DICTIONARIES)`、`useSyncExternalStore` 共享 store、`localStorage` 持久化、设置行自带的 chip 控件与 CSS 前缀。
 - `@deepseek-ai/dsh-client-ui-plugin-manager`：
   - `src/client/PluginManagerPage.tsx:822` — `renderSlot('plugins.bundle.config', { view: 'page' }, { entryKey: pkg.name })`，配置区位于 bundle 详情页描述与组件列表之间；
@@ -41,7 +41,7 @@ icon.svg                原创图标
 README.md / README.zh.md
 ```
 
-`dsh.client.inject` 只列 `@deepseek-ai/dsh-client-ui-conversation`（徽标 slot 的拥有者）。`plugins.bundle.config` 由 Plugins 页面延迟声明，`ctx.slots.inject` 自动等待，不把它列进 inject，以免缺少该页面的 profile 里整个插件都不激活。
+`dsh.client.inject` 为空（与 `dsh-theme-picker` 一致），两个 slot 都靠 `ctx.slots.inject` 等待声明：`shell.overlay` 由 `dsh-client-ui-layout` 的 AppFrame 声明，`plugins.bundle.config` 由 Plugins 页面延迟声明。不列 inject 也避免某个 UI 包缺失时整个插件不激活。
 
 ## 节日数据
 
@@ -68,7 +68,7 @@ README.md / README.zh.md
 
 ## UI
 
-- **徽标**：`conversation.header.leading`，主行节日名 + 日期（近似时「约」贴在日期旁），次行地区名 +「还有 N 天 / 就是今天」；左侧竖条按类别着色；`tabIndex`/`role`/`aria-label` 让地区、类别、当地日历日、后续节日与近似说明对键盘和读屏可达，hover 再给出同样信息。CSS 全部在 bundle 的 `css` 数组里，类名前缀 `.dsh-nf-`，容器带 `data-dsh-next-festival`，颜色只用 `--dsw-alias-*` token。
+- **徽标**：`shell.overlay` 的独立 list entry，右下角固定浮层（`position:fixed`），主行节日名 + 日期（近似时「约」贴在日期旁），次行地区名 +「还有 N 天 / 就是今天」；左侧竖条按类别着色；`tabIndex`/`role`/`aria-label` 让地区、类别、当地日历日、后续节日与近似说明对键盘和读屏可达，hover 再给出同样信息。CSS 全部在 bundle 的 `css` 数组里，类名前缀 `.dsh-nf-`，容器带 `data-dsh-next-festival`，颜色只用 `--dsw-alias-*` token。
 - **设置区**：`plugins.bundle.config`，`key: 'dsh-next-festival'`，`locale: NS`。标题「节日地区 / Festival region」+ 说明 + 8 个 chip（大中华／其它两组）+ 当前值；暂存 draft + 「保存」按钮，未保存时显示提示，保存后用独立状态行反馈并定时清除；跨标签页变更通过 `externalAt` 提示而不静默覆盖草稿；离开页面丢弃未保存的选择，符合 Plugins 页面「只有保存才写入」的惯例。
 - **共享状态**：模块级 store（`subscribe` / `getSnapshot` / `setRegion`），写入 `localStorage: 'dsh-next-festival:region'`；设置区与徽标都通过 `useSyncExternalStore` 订阅，保存后即时联动；监听 `storage` 事件同步其它标签页。默认 `cn`。
 

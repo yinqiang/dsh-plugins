@@ -11,7 +11,7 @@
 ┃ 还有 N 天
 ```
 
-- **位置**：`conversation.header.leading`，`order: 1`。同时装了 `dsh-solar-term` 时，这块牌子排在节气牌后面。
+- **位置**：注册成 `shell.overlay` 的独立 entry，渲染为窗口右下角的小浮层。它不占用 `conversation.header.leading` —— 那是 `dsh-solar-term` 已占用的 **single 槽**，再注册会互相顶掉。两个插件完全独立、互不影响。想换位置，改 CSS 里 `.dsh-nf` 的 `right` / `bottom` 即可。
 - 第一行是下一个节日和日期；左侧竖条按类别换色：法定红、传统金、民族青、宗教紫。
 - 第二行在倒计时前标出所选地区，说明天数按**该地区的当地日历日**计算；当天显示「就是今天」。近似日期的「约」标在日期旁，不标在倒计时旁。
 - 悬停或用键盘聚焦徽标，可以看到地区、类别、当地日历日、时区、之后的另外两个节日，以及日期为估算时的说明；同样的信息也写在无障碍标签里。
@@ -83,4 +83,4 @@ node scripts/install.mjs --profile desktop --apply
 
 ## 原理
 
-宿主半 `lib/index.js` 只留一个空 `apply`，存在的意义是让包成为 Loader 行，把 `dsh.client` 带进浏览器启动图。`lib/client.js` 注册两个槽：徽标进 `conversation.header.leading`，地区选择器进按包名索引的 `plugins.bundle.config`。后一个槽只在插件页打开时由插件管理页面声明，`ctx.slots.inject` 会等它出现，不需要重启。
+宿主半 `lib/index.js` 只留一个空 `apply`，存在的意义是让包成为 Loader 行，把 `dsh.client` 带进浏览器启动图。`lib/client.js` 注册两个槽：徽标用 `shell.overlay` 的独立 list entry，地区选择器进按包名索引的 `plugins.bundle.config`。它**不碰** `conversation.header.leading` —— 那是 `dsh-solar-term` 占用的 single 槽，两个插件不共用槽位。后一个槽只在插件页打开时由插件管理页面声明，`ctx.slots.inject` 会等它出现，不需要重启。

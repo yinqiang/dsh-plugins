@@ -3,9 +3,11 @@
  *
  * Two slots, one bundle:
  *
- *   - `conversation.header.leading` (order 1): the next festival for the
- *     chosen region, its date, and the number of days left. It sits after
- *     dsh-solar-term's badge when both are installed.
+ *   - `shell.overlay` (its own list entry): an independent floating badge
+ *     with the next festival for the chosen region, its date, and the days
+ *     left. `conversation.header.leading` is a single slot already owned by
+ *     dsh-solar-term, so this plugin never registers there: the two plugins
+ *     render independently and cannot displace each other.
  *   - `plugins.bundle.config` (keyed by the package name): "Festival region",
  *     shown on this bundle's own page in the sidebar Plugins panel. The page
  *     declares that slot only while it is open, so ctx.slots.inject waits.
@@ -34,7 +36,7 @@ window.__ModuleLoader__.load({
 		const NS = "next-festival";
 		const STORAGE_KEY = "dsh-next-festival:region";
 		const STYLE_ID = PLUGIN_ID + "/style.css";
-		const HEADER_SLOT = "conversation.header.leading";
+		const OVERLAY_SLOT = "shell.overlay";
 		const CONFIG_SLOT = "plugins.bundle.config";
 		const DAY_MS = 86400000;
 		const UNIX_EPOCH_JD = 2440587.5;
@@ -677,7 +679,7 @@ window.__ModuleLoader__.load({
 
 		//#region styles
 		const css = [
-			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:12px 0 10px;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 58%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;-webkit-user-select:none;user-select:none}",
+			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;position:fixed;right:18px;bottom:18px;z-index:1000;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:0;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 78%,transparent);box-shadow:0 2px 14px color-mix(in oklab,var(--dsw-alias-label-primary,#111) 14%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;pointer-events:auto;-webkit-user-select:none;user-select:none}",
 			".dsh-nf-ink{flex:none;width:3px;height:26px;border-radius:99px;background:var(--dsh-nf-accent);box-shadow:0 0 9px color-mix(in oklab,var(--dsh-nf-accent) 55%,transparent)}",
 			".dsh-nf-body{display:flex;flex-direction:column;gap:3px;min-width:0}",
 			".dsh-nf-top{display:flex;align-items:baseline;gap:10px;justify-content:space-between}",
@@ -951,18 +953,18 @@ window.__ModuleLoader__.load({
 			const Badge = createBadge(ctx);
 			ctx.effect(function () {
 				try {
-					return ctx.slots.inject(HEADER_SLOT, function () {
+					return ctx.slots.inject(OVERLAY_SLOT, function () {
 						return ctx.slots.register({
-							name: HEADER_SLOT,
+							name: OVERLAY_SLOT,
 							id: "next-festival",
-							order: 1
+							order: 5
 						}, Badge);
 					});
 				} catch (error) {
-					console.warn(PLUGIN_ID + ": header badge registration failed", error);
+					console.warn(PLUGIN_ID + ": floating badge registration failed", error);
 					return function () {};
 				}
-			}, PLUGIN_ID + ": header badge");
+			}, PLUGIN_ID + ": floating badge");
 
 			const Settings = createSettings(ctx);
 			ctx.effect(function () {

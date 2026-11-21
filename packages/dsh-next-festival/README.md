@@ -11,7 +11,7 @@ The next festival for the region you pick, with a countdown, at the top-left of 
 ┃ 还有 N 天
 ```
 
-- **Placement:** `conversation.header.leading` with `order: 1`. If `dsh-solar-term` is installed too, this badge sits after the solar-term badge.
+- **Placement:** its own `shell.overlay` list entry, drawn as a small floating card at the bottom-right of the window. It never registers into `conversation.header.leading` — that is a **single** slot already owned by `dsh-solar-term`, so registering there would displace one of the two. The plugins stay fully independent. Move the card by editing `right` / `bottom` in the `.dsh-nf` CSS rule.
 - The first line is the next festival and its date. The bar on the left is coloured by kind: red for a public holiday, gold for a traditional one, green for an ethnic one, violet for a religious one.
 - The second line names the selected region next to the countdown, so it is clear the day count follows that region's local calendar day; on the day itself it reads "就是今天" / "today". An approximate date carries "约" / "approx." beside the date itself, not beside the countdown.
 - Hovering, or focusing the badge with the keyboard, shows the region, kind, local calendar day, time zone, the next two festivals, and a note when a date is approximate. The same summary is in the badge's accessible label.
@@ -83,4 +83,4 @@ With a linked development install, editing `lib/client.js` is enough — client 
 
 ## How it works
 
-The host half, `lib/index.js`, is an empty `apply`. It exists so the package is a Loader row, which carries `dsh.client` into the browser boot graph. `lib/client.js` registers two slots: the badge into `conversation.header.leading`, and the region picker into `plugins.bundle.config` keyed by the package name. The second slot is declared by the Plugins page only while that page is open; `ctx.slots.inject` waits for it, so no restart is needed to make the picker appear.
+The host half, `lib/index.js`, is an empty `apply`. It exists so the package is a Loader row, which carries `dsh.client` into the browser boot graph. `lib/client.js` registers two slots: the badge into its own `shell.overlay` list entry, and the region picker into `plugins.bundle.config` keyed by the package name. It deliberately does **not** touch `conversation.header.leading`, the single slot `dsh-solar-term` renders in; the two plugins never share a slot. The second slot is declared by the Plugins page only while that page is open; `ctx.slots.inject` waits for it, so no restart is needed to make the picker appear.
