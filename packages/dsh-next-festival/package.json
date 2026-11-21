@@ -1,7 +1,7 @@
 {
   "name": "dsh-next-festival",
   "version": "0.1.0",
-  "description": "Shows the next festival for the region you pick in an independent floating badge, with a countdown",
+  "description": "Shows the soonest festival across the regions you pick in a positionable floating badge, with a countdown",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

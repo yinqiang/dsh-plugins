@@ -34,7 +34,11 @@ window.__ModuleLoader__.load({
 		//#region constants
 		const PLUGIN_ID = "dsh-next-festival";
 		const NS = "next-festival";
-		const STORAGE_KEY = "dsh-next-festival:region";
+		const LEGACY_KEY = "dsh-next-festival:region";
+		const REGIONS_KEY = "dsh-next-festival:regions";
+		const POSITION_KEY = "dsh-next-festival:position";
+		const POSITIONS = ["top-left", "top-right", "bottom-left", "bottom-right"];
+		const DEFAULT_POSITION = "bottom-right";
 		const STYLE_ID = PLUGIN_ID + "/style.css";
 		const OVERLAY_SLOT = "shell.overlay";
 		const CONFIG_SLOT = "plugins.bundle.config";
@@ -54,7 +58,7 @@ window.__ModuleLoader__.load({
 			{ id: "my", name: "马来西亚", en: "Malaysia", zone: "Asia/Kuala_Lumpur", group: "other" }
 		];
 		const REGION_IDS = REGIONS.map(function (r) { return r.id; });
-		const DEFAULT_REGION = "cn";
+		const DEFAULT_REGIONS = ["cn"];
 		const KIND_RANK = { public: 0, traditional: 1, ethnic: 2, religious: 3 };
 		const KIND_COLORS = { public: "#c94f45", traditional: "#c99a3f", ethnic: "#5f9e6e", religious: "#8a72b5" };
 		//#endregion
@@ -486,7 +490,8 @@ window.__ModuleLoader__.load({
 				list.push({
 					festival: festival,
 					date: resolved.date,
-					approx: Boolean(resolved.approx || festival.approx)
+					approx: Boolean(resolved.approx || festival.approx),
+					region: region
 				});
 			}
 			list.sort(function (a, b) {
@@ -496,21 +501,43 @@ window.__ModuleLoader__.load({
 			return list;
 		}
 
-		/** The next festival at or after "today" in the region's own calendar. */
-		function nextFestival(regionId, millis) {
-			const region = REGIONS.filter(function (r) { return r.id === regionId; })[0] || REGIONS[0];
-			const today = zoneDay(region.zone, millis);
-			const year = Number(today.slice(0, 4));
-			const upcoming = expandYear(region.id, year).concat(expandYear(region.id, year + 1))
-				.filter(function (entry) { return entry.date >= today; });
-			const next = upcoming[0] || null;
+		/** Merge the selected regions' calendars and pick the soonest festival. */
+		function nextFestival(regionIds, millis) {
+			const ids = (Array.isArray(regionIds) ? regionIds : [regionIds])
+				.filter(function (id) { return REGION_IDS.indexOf(id) !== -1; });
+			const sources = (ids.length > 0 ? ids : DEFAULT_REGIONS).map(function (id) {
+				return REGIONS.filter(function (r) { return r.id === id; })[0];
+			});
+			const candidates = [];
+			for (const region of sources) {
+				const today = zoneDay(region.zone, millis);
+				const year = Number(today.slice(0, 4));
+				const list = expandYear(region.id, year).concat(expandYear(region.id, year + 1));
+				for (const entry of list) {
+					if (entry.date < today) continue;
+					candidates.push({
+					festival: entry.festival,
+					date: entry.date,
+					approx: entry.approx,
+					region: region,
+					days: dayOf(entry.date) - dayOf(today),
+					localToday: today
+				});
+				}
+			}
+			candidates.sort(function (a, b) {
+				return a.days - b.days || a.date.localeCompare(b.date) ||
+					KIND_RANK[a.festival.kind] - KIND_RANK[b.festival.kind];
+			});
+			const next = candidates[0] || null;
 			return {
-				region: region,
-				today: today,
+				regions: sources,
 				next: next,
-				days: next === null ? -1 : dayOf(next.date) - dayOf(today),
-				upcoming: upcoming.slice(0, 3),
-				sameDay: next === null ? [] : upcoming.filter(function (e) { return e.date === next.date; })
+				days: next === null ? -1 : next.days,
+				upcoming: candidates.slice(0, 3),
+				sameDay: next === null ? [] : candidates.filter(function (e) {
+					return e.date === next.date && e.days === next.days;
+				})
 			};
 		}
 		//#endregion
@@ -520,7 +547,15 @@ window.__ModuleLoader__.load({
 			zh: {
 				title: "下一个节日",
 				region: "节日地区",
-				regionDesc: "选择要显示哪个国家或地区的节日，保存后对话页左上角的徽标会立即更新。",
+				regionDesc: "可多选国家或地区；徽标显示所有选中地区里最近的一个节日，并标出它属于哪个地区。保存后立即更新。",
+				position: "显示位置",
+				positionDesc: "选择徽标出现在窗口的哪个角落。",
+				posTopLeft: "左上",
+				posTopRight: "右上",
+				posBottomLeft: "左下",
+				posBottomRight: "右下",
+				selected: "已选",
+				atLeastOne: "至少要保留一个地区。",
 				groupCn: "中国大陆与港澳台",
 				groupOther: "其它国家",
 				save: "保存",
@@ -531,7 +566,7 @@ window.__ModuleLoader__.load({
 				sameDay: "同日还有",
 				localDay: "按当地日期",
 				current: "当前：",
-				preview: "当前设置下的下一个节日：",
+				preview: "按当前选择预览：",
 				days: "天",
 				inDays: "还有",
 				today: "就是今天",
@@ -548,29 +583,37 @@ window.__ModuleLoader__.load({
 				after: "之后",
 				storageNote: "选择只保存在当前浏览器，不随账号同步。",
 				localOnly: "本浏览器无法保存设置，选择仅在本次会话有效。",
-				none: "当前浏览器无法计算该地区的节日日期",
+				none: "当前浏览器无法计算所选地区的节日日期",
 				dateFormat: { month: "long", day: "numeric" }
 			},
 			en: {
 				title: "Next festival",
 				region: "Festival region",
-				regionDesc: "Pick which country or region's festivals to show. Saving updates the badge at the top-left of the conversation immediately.",
+				regionDesc: "Pick several countries or regions; the badge shows the soonest festival across them and names its region. Saving applies immediately.",
+				position: "Badge position",
+				positionDesc: "Choose which corner of the window the badge sits in.",
+				posTopLeft: "Top left",
+				posTopRight: "Top right",
+				posBottomLeft: "Bottom left",
+				posBottomRight: "Bottom right",
+				selected: "Selected",
+				atLeastOne: "Keep at least one region.",
 				groupCn: "Mainland China, Hong Kong, Macau and Taiwan",
 				groupOther: "Other countries",
 				save: "Save",
 				saved: "Saved",
-				savedNote: "Saved — the badge has updated.",
-				unsaved: "Unsaved changes — press Save to apply.",
+				savedNote: "Saved - the badge has updated.",
+				unsaved: "Unsaved changes - press Save to apply.",
 				externalNote: "The setting changed in another tab; your unsaved choice is kept.",
 				sameDay: "Also on this day",
 				localDay: "Local date",
 				current: "Current: ",
-				preview: "Next festival with the current setting: ",
+				preview: "Preview with the current choice: ",
 				days: "days",
 				inDays: "in",
 				today: "today",
 				approx: "approx.",
-				approxNote: "Approximate date — check the local official calendar",
+				approxNote: "Approximate date - check the local official calendar",
 				kindPublic: "Public holiday",
 				kindTraditional: "Traditional festival",
 				kindEthnic: "Ethnic festival",
@@ -631,28 +674,64 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region preference store
-		function readStored() {
+		function cleanRegions(value) {
+			if (!Array.isArray(value)) return [];
+			const seen = [];
+			for (const id of value) {
+				if (REGION_IDS.indexOf(id) !== -1 && seen.indexOf(id) === -1) seen.push(id);
+			}
+			return seen;
+		}
+		function readRegions() {
 			try {
-				const value = localStorage.getItem(STORAGE_KEY);
-				return REGION_IDS.indexOf(value) === -1 ? DEFAULT_REGION : value;
+				const raw = localStorage.getItem(REGIONS_KEY);
+				if (raw !== null) {
+					const parsed = cleanRegions(JSON.parse(raw));
+					if (parsed.length > 0) return parsed;
+				}
+				const legacy = localStorage.getItem(LEGACY_KEY);
+				if (legacy !== null && REGION_IDS.indexOf(legacy) !== -1) return [legacy];
+			} catch (error) {}
+			return DEFAULT_REGIONS.slice();
+		}
+		function readPosition() {
+			try {
+				const value = localStorage.getItem(POSITION_KEY);
+				return POSITIONS.indexOf(value) === -1 ? DEFAULT_POSITION : value;
 			} catch (error) {
-				return DEFAULT_REGION;
+				return DEFAULT_POSITION;
 			}
 		}
 		function storageWritable() {
 			try {
-				localStorage.setItem(STORAGE_KEY + ":probe", "1");
-				localStorage.removeItem(STORAGE_KEY + ":probe");
+				localStorage.setItem(REGIONS_KEY + ":probe", "1");
+				localStorage.removeItem(REGIONS_KEY + ":probe");
 				return true;
 			} catch (error) {
 				return false;
 			}
 		}
-		let state = { region: readStored(), persistent: storageWritable(), externalAt: 0 };
-		let snapshot = { region: state.region, persistent: state.persistent, externalAt: state.externalAt };
+		function sameRegions(a, b) { return a.join(",") === b.join(","); }
+		let state = {
+			regions: readRegions(),
+			position: readPosition(),
+			persistent: storageWritable(),
+			externalAt: 0
+		};
+		let snapshot = {
+			regions: state.regions,
+			position: state.position,
+			persistent: state.persistent,
+			externalAt: state.externalAt
+		};
 		const listeners = new Set();
 		function emit() {
-			snapshot = { region: state.region, persistent: state.persistent, externalAt: state.externalAt };
+			snapshot = {
+				regions: state.regions,
+				position: state.position,
+				persistent: state.persistent,
+				externalAt: state.externalAt
+			};
 			for (const listener of [...listeners]) listener();
 		}
 		function subscribe(listener) {
@@ -660,26 +739,35 @@ window.__ModuleLoader__.load({
 			return function () { listeners.delete(listener); };
 		}
 		function getSnapshot() { return snapshot; }
-		function setRegion(id) {
-			if (REGION_IDS.indexOf(id) === -1 || id === state.region) return;
-			state.region = id;
-			try { localStorage.setItem(STORAGE_KEY, id); }
-			catch (error) { state.persistent = false; }
+		function setPreference(regions, position) {
+			const clean = cleanRegions(regions);
+			if (clean.length === 0) return;
+			const pos = POSITIONS.indexOf(position) === -1 ? DEFAULT_POSITION : position;
+			if (sameRegions(clean, state.regions) && pos === state.position) return;
+			state.regions = clean;
+			state.position = pos;
+			try {
+				localStorage.setItem(REGIONS_KEY, JSON.stringify(clean));
+				localStorage.setItem(POSITION_KEY, pos);
+			} catch (error) {
+				state.persistent = false;
+			}
 			emit();
 		}
-		function reloadRegion() {
-			const stored = readStored();
-			if (stored !== state.region) {
-				state.region = stored;
-				state.externalAt = Date.now();
-				emit();
-			}
+		function reloadPreference() {
+			const regions = readRegions();
+			const position = readPosition();
+			if (sameRegions(regions, state.regions) && position === state.position) return;
+			state.regions = regions;
+			state.position = position;
+			state.externalAt = Date.now();
+			emit();
 		}
 		//#endregion
 
 		//#region styles
 		const css = [
-			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;position:fixed;right:18px;bottom:18px;z-index:1000;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:0;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 78%,transparent);box-shadow:0 2px 14px color-mix(in oklab,var(--dsw-alias-label-primary,#111) 14%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;pointer-events:auto;-webkit-user-select:none;user-select:none}",
+			"[data-dsh-next-festival].dsh-nf{--dsh-nf-accent:#c94f45;position:fixed;z-index:1000;display:flex;align-items:center;gap:9px;box-sizing:border-box;min-width:132px;max-width:212px;margin:0;padding:5px 11px 5px 8px;border-radius:calc(var(--dsw-radius-md,8px) + 2px);border:1px solid color-mix(in oklab,var(--dsw-alias-label-primary,#111) 12%,transparent);background:color-mix(in oklab,var(--dsw-alias-bg-layer-1,#fff) 78%,transparent);box-shadow:0 2px 14px color-mix(in oklab,var(--dsw-alias-label-primary,#111) 14%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);color:var(--dsw-alias-label-primary,#111);line-height:1.2;font-variant-numeric:tabular-nums;pointer-events:auto;-webkit-user-select:none;user-select:none}",
 			".dsh-nf-ink{flex:none;width:3px;height:26px;border-radius:99px;background:var(--dsh-nf-accent);box-shadow:0 0 9px color-mix(in oklab,var(--dsh-nf-accent) 55%,transparent)}",
 			".dsh-nf-body{display:flex;flex-direction:column;gap:3px;min-width:0}",
 			".dsh-nf-top{display:flex;align-items:baseline;gap:10px;justify-content:space-between}",
@@ -689,6 +777,10 @@ window.__ModuleLoader__.load({
 			".dsh-nf-days{font-weight:700;color:var(--dsh-nf-accent)}",
 			".dsh-nf-today{font-weight:600;color:var(--dsh-nf-accent)}",
 			".dsh-nf-region{font-size:10px;color:var(--dsw-alias-label-tertiary,#8a8a92);white-space:nowrap}",
+			"[data-dsh-next-festival].dsh-nf[data-position=top-left]{left:18px;top:18px}",
+			"[data-dsh-next-festival].dsh-nf[data-position=top-right]{right:18px;top:18px}",
+			"[data-dsh-next-festival].dsh-nf[data-position=bottom-left]{left:18px;bottom:18px}",
+			"[data-dsh-next-festival].dsh-nf[data-position=bottom-right]{right:18px;bottom:18px}",
 			"[data-dsh-next-festival].dsh-nf:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#4c6ef5));outline-offset:2px}",
 			"[data-dsh-next-festival].dsh-nf-row{display:flex;flex-direction:column;gap:12px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}",
 			".dsh-nf-head{display:flex;justify-content:space-between;align-items:baseline;gap:24px}",
@@ -730,7 +822,7 @@ window.__ModuleLoader__.load({
 		//#endregion
 
 		//#region components
-		/** Build the header badge bound to one plugin context. */
+		/** Build the floating badge bound to one plugin context. */
 		function createBadge(ctx) {
 			return function FestivalBadge() {
 				const [now, setNow] = React.useState(function () { return Date.now(); });
@@ -747,12 +839,15 @@ window.__ModuleLoader__.load({
 				const current = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 				const locale = activeLanguage(ctx);
 				const copy = copyFor(locale);
-				const info = nextFestival(current.region, now);
+				const zh = locale.indexOf("zh") === 0;
+				const colon = zh ? "：" : ": ";
+				const paren = zh ? ["（", "）"] : [" (", ")"];
+				const info = nextFestival(current.regions, now);
 				const entry = info.next;
-
 				if (entry === null) {
 					return h("div", {
 						className: "dsh-nf", "data-dsh-next-festival": "badge",
+						"data-position": current.position,
 						style: { "--dsh-nf-accent": KIND_COLORS.traditional }
 					}, h("span", { className: "dsh-nf-next" }, copy.none));
 				}
@@ -760,11 +855,13 @@ window.__ModuleLoader__.load({
 				const festival = entry.festival;
 				const name = nameFor(festival, locale);
 				const accent = KIND_COLORS[festival.kind] || KIND_COLORS.traditional;
-			const zh = locale.indexOf("zh") === 0;
-			const colon = zh ? "：" : ": ";
-			const paren = zh ? ["（", "）"] : [" (", ")"];
-			const regionName = zh ? info.region.name : info.region.en;
-			const approxDate = (entry.approx ? copy.approx + " " : "") + shortDate(entry.date, locale);
+				const regionName = zh ? entry.region.name : entry.region.en;
+				const selectedNames = info.regions.map(function (r) { return zh ? r.name : r.en; }).join(zh ? "、" : ", ");
+				const approxDate = (entry.approx ? copy.approx + " " : "") + shortDate(entry.date, locale);
+				const labelOf = function (e) {
+					const owner = zh ? e.region.name : e.region.en;
+					return nameFor(e.festival, locale) + " " + e.date + paren[0] + owner + paren[1];
+				};
 				const countdown = info.days === 0
 					? h("span", { className: "dsh-nf-today", key: "today" }, copy.today)
 					: h(React.Fragment, { key: "days" }, [
@@ -776,41 +873,38 @@ window.__ModuleLoader__.load({
 					copy.regionLabel + colon + regionName,
 					copy.kind + colon + kindName(festival.kind, locale),
 					copy.date + colon + entry.date + (entry.approx ? paren[0] + copy.approx + paren[1] : ""),
-					info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days
+					info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days,
+					copy.localDay + colon + entry.localToday
 				];
-				title.push(copy.localDay + colon + info.today);
-			if (entry.approx) title.push(copy.approxNote);
+				if (info.regions.length > 1) title.push(copy.selected + colon + selectedNames);
+				if (entry.approx) title.push(copy.approxNote);
 				if (info.upcoming.length > 1) {
-					title.push(copy.after + colon + info.upcoming.slice(1).map(function (e) {
-						return nameFor(e.festival, locale) + " " + e.date;
-					}).join(" · "));
+					title.push(copy.after + colon + info.upcoming.slice(1).map(labelOf).join(" · "));
 				}
 				if (info.sameDay.length > 1) {
-					title.push(copy.sameDay + colon + info.sameDay.slice(1).map(function (e) {
-						return nameFor(e.festival, locale);
-					}).join(" · "));
+					title.push(copy.sameDay + colon + info.sameDay.slice(1).map(labelOf).join(" · "));
 				}
-				title.push(copy.timezone + colon + info.region.zone);
+				title.push(copy.timezone + colon + entry.region.zone);
 
-			const aria = [
-				copy.title, name, approxDate,
-				info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days,
-				copy.regionLabel + " " + regionName,
-				copy.kind + " " + kindName(festival.kind, locale),
-				copy.localDay + " " + info.today
-			];
-			if (entry.approx) aria.push(copy.approxNote);
-			if (info.upcoming.length > 1) aria.push(copy.after + " " + info.upcoming.slice(1).map(function (e) {
-				return nameFor(e.festival, locale) + " " + e.date;
-			}).join(", "));
+				const aria = [
+					copy.title, name, approxDate,
+					info.days === 0 ? copy.today : copy.inDays + " " + info.days + " " + copy.days,
+					copy.regionLabel + " " + regionName,
+					copy.kind + " " + kindName(festival.kind, locale),
+					copy.localDay + " " + entry.localToday
+				];
+				if (info.regions.length > 1) aria.push(copy.selected + " " + selectedNames);
+				if (entry.approx) aria.push(copy.approxNote);
+				if (info.upcoming.length > 1) aria.push(copy.after + " " + info.upcoming.slice(1).map(labelOf).join(", "));
 
 				return h("div", {
 					className: "dsh-nf",
 					"data-dsh-next-festival": "badge",
 					"data-kind": festival.kind,
-				"data-approx": entry.approx ? "true" : "false",
-				role: "group",
-				tabIndex: 0,
+					"data-approx": entry.approx ? "true" : "false",
+					"data-position": current.position,
+					role: "group",
+					tabIndex: 0,
 					style: { "--dsh-nf-accent": accent },
 					title: title.join("\n"),
 					"aria-label": aria.join(". ")
@@ -830,93 +924,123 @@ window.__ModuleLoader__.load({
 			};
 		}
 
-		/** Build the region picker shown on this bundle's own Plugins page. */
+		/** Build the multi-region picker and position setting shown on this bundle's own Plugins page. */
 		function createSettings(ctx) {
 			return function FestivalSettings(props) {
 				const current = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 				const locale = activeLanguage(ctx);
+				const zh = locale.indexOf("zh") === 0;
 				const t = translator(props, locale);
-				const [draft, setDraft] = React.useState(current.region);
+				const [draftRegions, setDraftRegions] = React.useState(current.regions.slice());
+				const [draftPosition, setDraftPosition] = React.useState(current.position);
 				const [notice, setNotice] = React.useState(null);
-			const dirty = draft !== current.region;
-			const dirtyRef = React.useRef(false);
-			dirtyRef.current = dirty;
-			const regionRef = React.useRef(current.region);
-			const externalRef = React.useRef(current.externalAt);
+				const dirty = !sameRegions(draftRegions, current.regions) || draftPosition !== current.position;
+				const dirtyRef = React.useRef(false);
+				dirtyRef.current = dirty;
+				const signature = current.regions.join(",") + "|" + current.position;
+				const signatureRef = React.useRef(signature);
+				const externalRef = React.useRef(current.externalAt);
 				React.useEffect(function () {
-				if (regionRef.current !== current.region) {
-					regionRef.current = current.region;
-					if (!dirtyRef.current) setDraft(current.region);
-				}
-			}, [current.region]);
-			React.useEffect(function () {
-				if (externalRef.current !== current.externalAt) {
-					externalRef.current = current.externalAt;
-					setNotice("external");
-				}
-			}, [current.externalAt]);
-			React.useEffect(function () {
-				if (notice === null) return;
-				const timer = window.setTimeout(function () { setNotice(null); }, 3500);
-				return function () { window.clearTimeout(timer); };
-			}, [notice]);
+					if (signatureRef.current !== signature) {
+						signatureRef.current = signature;
+						if (!dirtyRef.current) {
+							setDraftRegions(current.regions.slice());
+							setDraftPosition(current.position);
+						}
+					}
+				}, [signature]);
+				React.useEffect(function () {
+					if (externalRef.current !== current.externalAt) {
+						externalRef.current = current.externalAt;
+						setNotice("external");
+					}
+				}, [current.externalAt]);
+				React.useEffect(function () {
+					if (notice === null) return;
+					const timer = window.setTimeout(function () { setNotice(null); }, 3500);
+					return function () { window.clearTimeout(timer); };
+				}, [notice]);
 
-				const info = nextFestival(current.region, Date.now());
-				const region = REGIONS.filter(function (r) { return r.id === current.region; })[0] || REGIONS[0];
-				const regionName = locale.indexOf("zh") === 0 ? region.name : region.en;
-				const groups = [
+				const previewInfo = nextFestival(draftRegions, Date.now());
+				const regionGroups = [
 					{ key: "cn", label: t("groupCn"), items: REGIONS.filter(function (r) { return r.group === "cn"; }) },
 					{ key: "other", label: t("groupOther"), items: REGIONS.filter(function (r) { return r.group === "other"; }) }
 				];
+				const positionKeys = {
+					"top-left": "posTopLeft", "top-right": "posTopRight",
+					"bottom-left": "posBottomLeft", "bottom-right": "posBottomRight"
+				};
 				const children = [
 					h("div", { className: "dsh-nf-head", key: "head" }, [
 						h("div", { className: "dsh-nf-text", key: "text" }, [
 							h("div", { className: "dsh-nf-title", key: "title" }, t("region")),
 							h("div", { className: "dsh-nf-desc", key: "desc" }, t("regionDesc"))
 						]),
-						h("div", { className: "dsh-nf-value", key: "value" }, t("current") + regionName)
+						h("div", { className: "dsh-nf-value", key: "value" }, t("selected") + " " + current.regions.length)
 					]),
-					h("div", { className: "dsh-nf-groups", key: "groups" }, groups.map(function (group) {
+					h("div", { className: "dsh-nf-groups", key: "groups" }, regionGroups.map(function (group) {
 						return h("div", { className: "dsh-nf-group", key: group.key }, [
 							h("div", { className: "dsh-nf-label", key: "label" }, group.label),
 							h("div", { className: "dsh-nf-chips", key: "chips" }, group.items.map(function (item) {
+								const active = draftRegions.indexOf(item.id) !== -1;
 								return h("button", {
 									key: item.id,
 									type: "button",
 									className: "dsh-nf-chip",
-									"data-active": draft === item.id ? "true" : "false",
-									"aria-pressed": draft === item.id ? "true" : "false",
+									"data-active": active ? "true" : "false",
+									"aria-pressed": active ? "true" : "false",
 									title: item.zone,
-									onClick: function () { setDraft(item.id); }
-								}, locale.indexOf("zh") === 0 ? item.name : item.en);
+									onClick: function () {
+										if (!active) setDraftRegions(draftRegions.concat([item.id]));
+										else if (draftRegions.length > 1) setDraftRegions(draftRegions.filter(function (id) { return id !== item.id; }));
+										else setNotice("atLeastOne");
+									}
+								}, zh ? item.name : item.en);
 							}))
 						]);
-					}))
+					})),
+					h("div", { className: "dsh-nf-group", key: "position" }, [
+						h("div", { className: "dsh-nf-label", key: "label" }, t("position") + " · " + t("positionDesc")),
+						h("div", { className: "dsh-nf-chips", key: "chips" }, POSITIONS.map(function (id) {
+							return h("button", {
+								key: id,
+								type: "button",
+								className: "dsh-nf-chip",
+								"data-active": draftPosition === id ? "true" : "false",
+								"aria-pressed": draftPosition === id ? "true" : "false",
+								onClick: function () { setDraftPosition(id); }
+							}, t(positionKeys[id]));
+						}))
+					])
 				];
 
-				if (info.next !== null) {
+				if (previewInfo.next !== null) {
 					children.push(h("div", { className: "dsh-nf-preview", key: "preview" },
 						t("preview"),
-						h("b", { key: "name" }, nameFor(info.next.festival, locale) + " " + info.next.date),
-						info.days === 0 ? " · " + t("today") : " · " + t("inDays") + " " + info.days + " " + t("days")
+						h("b", { key: "name" }, nameFor(previewInfo.next.festival, locale) + " " + previewInfo.next.date),
+						previewInfo.days === 0 ? " · " + t("today") : " · " + t("inDays") + " " + previewInfo.days + " " + t("days")
 					));
 				}
 
 				const note = dirty
-				? t("unsaved")
-				: notice === "saved" ? t("savedNote")
-				: notice === "external" ? t("externalNote")
-				: current.persistent ? t("storageNote") : t("localOnly");
+					? t("unsaved")
+					: notice === "saved" ? t("savedNote")
+					: notice === "external" ? t("externalNote")
+					: notice === "atLeastOne" ? t("atLeastOne")
+					: current.persistent ? t("storageNote") : t("localOnly");
 
-			children.push(h("div", { className: "dsh-nf-foot", key: "foot" }, [
+				children.push(h("div", { className: "dsh-nf-foot", key: "foot" }, [
 					h("button", {
 						key: "save",
 						type: "button",
 						className: "dsh-nf-save",
 						disabled: !dirty,
-						onClick: function () { setRegion(draft); setNotice("saved"); }
+						onClick: function () { setPreference(draftRegions, draftPosition); setNotice("saved"); }
 					}, t("save")),
-					h("span", { className: "dsh-nf-note", key: "note", "data-notice": dirty ? "unsaved" : (notice || "none"), role: "status" }, note)
+					h("span", {
+						className: "dsh-nf-note", key: "note",
+						"data-notice": dirty ? "unsaved" : (notice || "none"), role: "status"
+					}, note)
 				]));
 
 				return h("div", { className: "dsh-nf-row", "data-dsh-next-festival": "settings" }, children);
@@ -944,7 +1068,7 @@ window.__ModuleLoader__.load({
 			}, PLUGIN_ID + ": locale");
 			ctx.effect(function () {
 				const onStorage = function (event) {
-					if (event.key === STORAGE_KEY || event.key === null) reloadRegion();
+					if (event.key === REGIONS_KEY || event.key === POSITION_KEY || event.key === LEGACY_KEY || event.key === null) reloadPreference();
 				};
 				window.addEventListener("storage", onStorage);
 				return function () { window.removeEventListener("storage", onStorage); };
@@ -997,7 +1121,9 @@ window.__ModuleLoader__.load({
 			solarTermDay: solarTermDay,
 			buildCalendarMap: buildCalendarMap,
 			expandYear: expandYear,
-			nextFestival: nextFestival
+			nextFestival: nextFestival,
+			POSITIONS: POSITIONS,
+			DEFAULT_POSITION: DEFAULT_POSITION
 		};
 		return module.exports;
 	}

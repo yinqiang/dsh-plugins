@@ -11,10 +11,10 @@ The next festival for the region you pick, with a countdown, at the top-left of 
 ┃ 还有 N 天
 ```
 
-- **Placement:** its own `shell.overlay` list entry, drawn as a small floating card at the bottom-right of the window. It never registers into `conversation.header.leading` — that is a **single** slot already owned by `dsh-solar-term`, so registering there would displace one of the two. The plugins stay fully independent. Move the card by editing `right` / `bottom` in the `.dsh-nf` CSS rule.
+- **Placement:** its own `shell.overlay` list entry, drawn as a small floating card. Pick one of four corners (top-left, top-right, bottom-left, bottom-right) on the plugin page; bottom-right is the default. It never registers into `conversation.header.leading` — that is a **single** slot already owned by `dsh-solar-term`, so registering there would displace one of the two. The plugins stay fully independent.
 - The first line is the next festival and its date. The bar on the left is coloured by kind: red for a public holiday, gold for a traditional one, green for an ethnic one, violet for a religious one.
-- The second line names the selected region next to the countdown, so it is clear the day count follows that region's local calendar day; on the day itself it reads "就是今天" / "today". An approximate date carries "约" / "approx." beside the date itself, not beside the countdown.
-- Hovering, or focusing the badge with the keyboard, shows the region, kind, local calendar day, time zone, the next two festivals, and a note when a date is approximate. The same summary is in the badge's accessible label.
+- The second line names the region this festival belongs to, ahead of the countdown; on the day itself it reads "就是今天" / "today". An approximate date carries "约" / "approx." beside the date itself, not beside the countdown. With several regions selected, the badge still shows the single soonest festival across all of them.
+- Hovering, or focusing the badge with the keyboard, shows the festival's region, every selected region, kind, local calendar day, time zone, the next two festivals (each labelled with its region), and a note when a date is approximate. The same summary is in the badge's accessible label.
 - It re-checks the clock every 30 seconds, refreshes when the window becomes visible again, and rolls over to the following festival after the day ends.
 
 ## Regions
@@ -25,7 +25,7 @@ Mainland China (`cn`), Hong Kong (`hk`), Macau (`mo`), Taiwan (`tw`), United Sta
 
 **Sidebar → Plugins → Installed → Next festival → Festival region.** This is the plugin's own page: the picker is registered into the `plugins.bundle.config` keyed slot, so it appears between the bundle description and its component rows, not in the general Settings page.
 
-Pick one of the eight regions, then press **Save**. An unsaved-change hint stays visible until you save, and the draft is dropped if you leave the page; a separate status line confirms a save and clears after a few seconds. A change made in another tab is reported instead of silently overwriting your draft. The choice is stored in this browser's `localStorage` under `dsh-next-festival:region`; it is deliberately not a profile setting, so a different browser can pick a different region. Both the badge and the picker update immediately, and other tabs on the same origin follow along. Default: Mainland China.
+Tick any number of the eight regions and choose a badge position (four corners), then press **Save**. At least one region must stay selected. All selected calendars are merged and the soonest festival wins, so the badge still shows one festival — labelled with its region. An unsaved-change hint stays visible until you save, and the draft is dropped if you leave the page; a separate status line confirms a save and clears after a few seconds. A change made in another tab is reported instead of silently overwriting your draft. Preferences live in this browser's `localStorage` as `dsh-next-festival:regions` (JSON array) and `dsh-next-festival:position`; the legacy single-region key `dsh-next-festival:region` is read as the initial selection. They are deliberately not profile settings, so a different browser can pick its own. Badge and picker update immediately, and other tabs on the same origin follow along. Defaults: Mainland China, bottom-right.
 
 ## How the dates are computed
 
@@ -41,7 +41,7 @@ Everything runs locally in `lib/client.js`. There is no network call and no depe
 | `solar` | 清明, 冬至 | Low-precision solar-longitude solver |
 | `table` | Losar, Shoton, Deepavali, Vesak, Thaipusam, Naadam, harvest festivals | Official 2026/2027 dates plus later calendar estimates, all approximate |
 
-"Today" is the **local calendar day of the selected region**, obtained with `Intl.DateTimeFormat` and that region's IANA time zone. This year's and next year's rules are expanded, sorted, and the first date on or after today wins; the difference is a pure day count, so travelling or a different system time zone does not shift the countdown by a day.
+For each selected region, "today" is that region's local calendar day (its IANA time zone, via `Intl.DateTimeFormat`). This year's and next year's rules are expanded for every selected region, merged, and sorted by days remaining: the soonest festival wins, with ties broken by date and then kind. Each countdown is a pure day count against its own region's local day, so travelling or a different system time zone does not shift it by a day.
 
 ### Accuracy
 
@@ -75,6 +75,7 @@ node scripts/install.mjs --profile desktop --apply
 | Festival list, names, rules | `FESTIVALS` in `lib/client.js` |
 | Published dates for calendar-table festivals | the `years` maps in the same table |
 | Region names and time zones | `REGIONS` |
+| Position choices and corner offsets | `POSITIONS` and the `[data-position=...]` rules in the `css` array |
 | Badge size, colours, or kind colours | the `css` array and `KIND_COLORS` |
 | Setting-page layout | `.dsh-nf-row` and friends in the `css` array |
 | Refresh interval | `setInterval(tick, 30000)` in the badge component |

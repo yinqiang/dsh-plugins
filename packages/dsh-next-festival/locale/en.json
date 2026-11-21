@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Next festival",
-    "description": "Shows the next festival for the region you pick and the days remaining, in an independent floating badge that never shares a slot with the solar-term plugin. Choose a region in this plugin's own page: sidebar Plugins > Installed > Next festival > Festival region. Fixed, lunar, Islamic-calendar and weekday-rule dates are computed locally with no network access; a few ethnic and religious festivals follow published year tables and are marked as approximate. The choice is saved in this browser only."
+    "description": "Shows the soonest festival across the regions you pick and the days remaining, in a positionable floating badge that never shares a slot with the solar-term plugin. Choose several regions and one of four corners in this plugin's own page: sidebar Plugins > Installed > Next festival > Festival region. Fixed, lunar, Islamic-calendar and weekday-rule dates are computed locally with no network access; a few ethnic and religious festivals follow published year tables and are marked as approximate. The choice is saved in this browser only."
   }
 }
