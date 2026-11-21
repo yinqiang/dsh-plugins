@@ -1,0 +1,5 @@
+# dsh-next-festival bundle layer.
+# Inserted once the package name appears in dsh.profile.bundles.
+- insert:
+    - id: next-festival
+      name: dsh-next-festival

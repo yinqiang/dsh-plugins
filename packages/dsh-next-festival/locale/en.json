@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Next festival",
+    "description": "Shows the next festival for the region you pick and the days remaining, at the top-left of the conversation. Choose a region in this plugin's own page: sidebar Plugins > Installed > Next festival > Festival region. Fixed, lunar, Islamic-calendar and weekday-rule dates are computed locally with no network access; a few ethnic and religious festivals follow published year tables and are marked as approximate. The choice is saved in this browser only."
+  }
+}

@@ -14,6 +14,7 @@
 | [`dsh-theme-picker`](./packages/dsh-theme-picker) | 装多个主题包、随时切换、首帧不闪 | 主题 |
 | [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | 给主题管理器用的 Dracula 配色包 | 主题 |
 | [`dsh-solar-term`](./packages/dsh-solar-term) | 对话页左上角的节气牌：当前节气、交节日期、距下一个节气还有几天 | UI |
+| [`dsh-next-festival`](./packages/dsh-next-festival) | 显示中国大陆、港澳台及美英新马的下一个节日，地区在插件自己的页面里选 | UI |
 
 ## 包名说明
 
@@ -26,6 +27,7 @@ dsh plugin add dsh-balance-floater
 dsh plugin add dsh-theme-picker
 dsh plugin add dsh-theme-dracula-pack
 dsh plugin add dsh-solar-term
+dsh plugin add dsh-next-festival
 ```
 
 装完重启一次 DSH（Loader 行只在启动时读取）。主题包要配 `dsh-theme-picker` 才有用，两个一起装。
@@ -99,6 +101,9 @@ packages/
     theme/theme.css       作用域写死的调色板
   dsh-solar-term/
     locale/*.json         界面文案
+  dsh-next-festival/
+    lib/client.js         历法规则、徽标、插件页地区选择器
+    locale/*.json         展示信息
 scripts/
   install.mjs             本地软链安装（链接 + bundles + 依赖）
   pack.mjs                打包成 dist/*.tgz

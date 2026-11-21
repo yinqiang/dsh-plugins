@@ -1,0 +1,7 @@
+url: https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-next-festival
+name: yinqiang/dsh-plugins#dsh-next-festival
+category: ui
+description:
+  en: 'Next festival and countdown for Mainland China, Hong Kong, Macau, Taiwan, the US, UK, Singapore and Malaysia, with a region picker on the plugin page.'
+  zh: '显示中国大陆、港澳台及美英新马的下一个节日与倒计时，在插件自己的页面里选择地区。'
+# tarball: https://github.com/yinqiang/dsh-plugins/releases/latest/download/dsh-next-festival.tgz

@@ -1,0 +1,64 @@
+{
+  "name": "dsh-next-festival",
+  "version": "0.1.0",
+  "description": "Shows the next festival for the region you pick, with a countdown, at the top-left of the conversation",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "locale",
+    "icon.svg",
+    "dsh.bundle.patch.yml",
+    "README.md",
+    "README.zh.md"
+  ],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "festival",
+    "holiday",
+    "calendar",
+    "countdown",
+    "ui"
+  ],
+  "author": "yinqiang (https://github.com/yinqiang)",
+  "license": "MIT",
+  "homepage": "https://github.com/yinqiang/dsh-plugins/tree/main/packages/dsh-next-festival#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yinqiang/dsh-plugins.git",
+    "directory": "packages/dsh-next-festival"
+  },
+  "bugs": {
+    "url": "https://github.com/yinqiang/dsh-plugins/issues"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh.bundle.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "external": []
+    },
+    "marketplace": {
+      "profiles": [
+        "web",
+        "desktop"
+      ],
+      "manualSteps": false,
+      "requiresRestart": false,
+      "requiresBuildApproval": false
+    }
+  }
+}

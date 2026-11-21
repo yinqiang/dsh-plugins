@@ -14,6 +14,7 @@ Every package declares `dsh.bundle` — the manifest field the Harness plugin li
 | [`dsh-theme-picker`](./packages/dsh-theme-picker) | Installs any number of theme packs and switches between them instantly, with no reload and no first-paint flash | Theme |
 | [`dsh-theme-dracula-pack`](./packages/dsh-theme-dracula-pack) | A Dracula palette pack for the theme picker | Theme |
 | [`dsh-solar-term`](./packages/dsh-solar-term) | A solar-term badge at the top-left of the conversation: the current term, its exact moment, and the days until the next one | UI |
+| [`dsh-next-festival`](./packages/dsh-next-festival) | The next festival for Mainland China, Hong Kong, Macau, Taiwan, the US, UK, Singapore or Malaysia, with a region picker on the plugin's own page | UI |
 
 ## Package names
 
@@ -26,6 +27,7 @@ dsh plugin add dsh-balance-floater
 dsh plugin add dsh-theme-picker
 dsh plugin add dsh-theme-dracula-pack
 dsh plugin add dsh-solar-term
+dsh plugin add dsh-next-festival
 ```
 
 Restart DSH once afterwards — Loader rows are read at start-up only.
@@ -101,6 +103,9 @@ packages/
     theme/theme.css       palette, scoped by the file itself
   dsh-solar-term/
     locale/*.json         user-facing strings
+  dsh-next-festival/
+    lib/client.js         calendar rules, badge, and the plugin-page region picker
+    locale/*.json         display metadata
 scripts/
   install.mjs             local link install (link + bundles + dependencies)
   pack.mjs                pack every package into dist/*.tgz
